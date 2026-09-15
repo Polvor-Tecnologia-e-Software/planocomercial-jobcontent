@@ -1,0 +1,558 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Escala de cantos alinhada ao layout aprovado (docs internos de
+     identidade visual): 10/14/20/26/32px, não um múltiplo simples de um
+     único --radius base — por isso definidos explicitamente, não
+     derivados por fórmula. Nomes "-token" de propósito, para não colidir
+     com os nomes --radius-* que o Tailwind espera (ver @theme inline
+     abaixo — mesma técnica de indireção já usada para as cores). */
+  --radius-token-sm: 0.625rem;
+  --radius-token-md: 0.875rem;
+  --radius-token-lg: 1.25rem;
+  --radius-token-xl: 1.625rem;
+  --radius-token-2xl: 2rem;
+  --radius: var(--radius-token-md);
+
+  /* ─── Paleta Job Content (docs/IDENTIDADE VISUAL_JOB CONTENT_2025 +
+     layout aprovado para a tela de resultado/cabeçalho) ───
+     Cores primitivas. NUNCA usar estes hex diretamente em componentes —
+     sempre pelos tokens semânticos abaixo (--primary, --accent, etc.),
+     para que uma futura revisão de marca troque um lugar só. */
+  --brand-navy-900: #0d1826;
+  --brand-navy-800: #122138;
+  --brand-navy-700: #1a2c47;
+  --brand-navy: var(--brand-navy-800);
+  --brand-blue: #0091fe;
+  --brand-blue-dark: #065e9d;
+  --brand-orange-light: #ff9854;
+  --brand-orange: #f97925;
+  --brand-orange-deep: #ff6600;
+  --brand-gray-light: #e6e6e6;
+  --brand-gray: #595959;
+  --brand-gray-300: #c7ccd3;
+
+  --background: #f5f7fb;
+  --foreground: var(--brand-navy);
+
+  --card: #ffffff;
+  --card-foreground: var(--brand-navy);
+
+  --popover: #ffffff;
+  --popover-foreground: var(--brand-navy);
+
+  --primary: var(--brand-blue);
+  --primary-foreground: #ffffff;
+
+  --secondary: #e8f3ff;
+  --secondary-foreground: var(--brand-blue-dark);
+
+  --muted: #eef1f5;
+  --muted-foreground: var(--brand-gray);
+
+  --accent: var(--brand-orange-deep);
+  --accent-foreground: #ffffff;
+
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+
+  --border: #e1e7ef;
+  --input: #e1e7ef;
+  --ring: var(--brand-blue);
+
+  /* Verde oficial do WhatsApp — cor externa à marca Job Content, usada só
+     nos CTAs que levam ao WhatsApp (ver src/lib/contact.ts e
+     src/components/icons/whatsapp-icon.tsx), nunca no resto da UI. */
+  --whatsapp-green: #25d366;
+  --whatsapp-green-dark: #1da851;
+
+  --gradient-blue: linear-gradient(135deg, var(--brand-blue) 0%, var(--brand-blue-dark) 100%);
+  --gradient-orange: linear-gradient(135deg, var(--brand-orange-light) 0%, var(--brand-orange-deep) 100%);
+  --gradient-hero: linear-gradient(135deg, var(--brand-blue) 0%, var(--brand-blue-dark) 55%, var(--brand-navy) 100%);
+  --gradient-soft: linear-gradient(135deg, #eaf4ff 0%, #fff3ea 100%);
+  /* Cabeçalho e faixas escuras (ex.: causa-raiz, CTA final). */
+  --gradient-navy: linear-gradient(120deg, var(--brand-navy-900), var(--brand-navy-800) 55%, var(--brand-blue-dark));
+  --gradient-navy-blue: linear-gradient(150deg, var(--brand-navy-800), var(--brand-blue-dark));
+  --gradient-blue-light: linear-gradient(150deg, var(--brand-blue-dark), var(--brand-blue));
+  --gradient-cta: linear-gradient(120deg, var(--brand-blue) 0%, var(--brand-blue-dark) 45%, var(--brand-navy-800) 100%);
+
+  --shadow-token-card: 0 4px 24px rgba(18, 33, 56, 0.08);
+  --shadow-token-lift: 0 14px 34px rgba(18, 33, 56, 0.14);
+}
+
+.dark {
+  --background: var(--brand-navy);
+  --foreground: #f5f8fc;
+
+  --card: #17273f;
+  --card-foreground: #f5f8fc;
+
+  --popover: #17273f;
+  --popover-foreground: #f5f8fc;
+
+  --primary: var(--brand-blue);
+  --primary-foreground: #ffffff;
+
+  --secondary: #1c3150;
+  --secondary-foreground: #eaf4ff;
+
+  --muted: #1c3150;
+  --muted-foreground: #9fb2c9;
+
+  --accent: var(--brand-orange-deep);
+  --accent-foreground: #ffffff;
+
+  --destructive: #f87171;
+  --destructive-foreground: #17273f;
+
+  --border: color-mix(in oklch, white 12%, transparent);
+  --input: color-mix(in oklch, white 15%, transparent);
+  --ring: var(--brand-blue);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-brand-navy-900: var(--brand-navy-900);
+  --color-brand-navy-800: var(--brand-navy-800);
+  --color-brand-navy-700: var(--brand-navy-700);
+  --color-brand-navy: var(--brand-navy);
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-blue-dark: var(--brand-blue-dark);
+  --color-brand-orange-light: var(--brand-orange-light);
+  --color-brand-orange: var(--brand-orange);
+  --color-brand-orange-deep: var(--brand-orange-deep);
+  --color-brand-gray-light: var(--brand-gray-light);
+  --color-brand-gray: var(--brand-gray);
+  --color-brand-gray-300: var(--brand-gray-300);
+
+  --color-whatsapp-green: var(--whatsapp-green);
+  --color-whatsapp-green-dark: var(--whatsapp-green-dark);
+
+  --radius-sm: var(--radius-token-sm);
+  --radius-md: var(--radius-token-md);
+  --radius-lg: var(--radius-token-lg);
+  --radius-xl: var(--radius-token-xl);
+  --radius-2xl: var(--radius-token-2xl);
+
+  /* --font-inter/--font-plus-jakarta-sans são injetadas pelo next/font no
+     <html> (ver src/app/layout.tsx) — indireção necessária para o
+     Tailwind reconhecer font-sans/font-heading como utilities geradas. */
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-plus-jakarta-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    /* Fundo claro "vivo" em vez de branco chapado — tons de marca bem
+       diluídos, quase imperceptíveis, só para dar profundidade atrás dos
+       cards. Nunca compete com o conteúdo (mantém prioridade ao fundo
+       claro pedida na identidade visual). */
+    background-image:
+      radial-gradient(1100px 500px at 15% -5%, rgba(0, 145, 254, 0.1), transparent 60%),
+      radial-gradient(900px 500px at 100% 10%, rgba(249, 121, 37, 0.08), transparent 55%);
+    background-attachment: fixed;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-heading;
+  }
+}
+
+/* ─── Utilitários de gradiente e sombra da marca ──────────────────────────
+   Usados como `className="bg-gradient-brand-blue"` etc. em vez de repetir
+   `linear-gradient(...)`/box-shadow inline nos componentes — um único
+   lugar para ajustar os tons se a identidade visual mudar. */
+@utility bg-gradient-brand-blue {
+  background-image: var(--gradient-blue);
+}
+
+@utility bg-gradient-brand-orange {
+  background-image: var(--gradient-orange);
+}
+
+@utility bg-gradient-hero {
+  background-image: var(--gradient-hero);
+}
+
+@utility bg-gradient-soft {
+  background-image: var(--gradient-soft);
+}
+
+@utility bg-gradient-navy {
+  background-image: var(--gradient-navy);
+}
+
+@utility bg-gradient-navy-blue {
+  background-image: var(--gradient-navy-blue);
+}
+
+@utility bg-gradient-blue-light {
+  background-image: var(--gradient-blue-light);
+}
+
+@utility bg-gradient-cta {
+  background-image: var(--gradient-cta);
+}
+
+@utility text-gradient-brand {
+  background-image: var(--gradient-blue);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+@utility shadow-card {
+  box-shadow: var(--shadow-token-card);
+}
+
+@utility shadow-lift {
+  box-shadow: var(--shadow-token-lift);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Tela inicial (Promise Screen) — layout aprovado com ilustração de
+   iceberg. CSS dedicado (em vez de utilities Tailwind) de propósito: é
+   uma ilustração SVG longa e sensível a erro de transcrição, então o
+   estilo fica o mais próximo possível do que foi fornecido, só trocando
+   as cores cruas pelos tokens de marca já existentes acima (todos batem
+   exatamente, ver comparação em src/components/diagnostic/promise/README
+   se existir). Ver src/components/diagnostic/promise/hero-section.tsx,
+   problem-pillars-section.tsx, closing-section.tsx.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Escopo de fonte da tela inicial: Montserrat em tudo (títulos incluídos),
+   sobrescrevendo a Plus Jakarta Sans que "h1,h2,h3 { @apply font-heading }"
+   (em @layer base, acima) aplicaria por padrão — esta regra não está
+   dentro de nenhum @layer, então vence a de @layer base independente de
+   especificidade (regra de cascade layers do CSS). */
+.promise-screen {
+  font-family: var(--font-montserrat), sans-serif;
+}
+.promise-screen h1,
+.promise-screen h2,
+.promise-screen h3 {
+  font-family: var(--font-montserrat), sans-serif;
+}
+
+:root {
+  --gradient-promise-hero: linear-gradient(
+    180deg,
+    var(--brand-blue) 0%,
+    var(--brand-blue-dark) 38%,
+    var(--brand-navy-800) 66%,
+    color-mix(in srgb, var(--brand-navy-800) 55%, black 45%) 100%
+  );
+  --gradient-promise-closing: linear-gradient(
+    315deg,
+    var(--brand-navy-800) 0%,
+    var(--brand-blue-dark) 50%,
+    var(--brand-blue) 100%
+  );
+  --promise-facet-stroke: color-mix(in srgb, var(--brand-navy-800) 45%, transparent);
+  --promise-shadow-elevated: color-mix(in srgb, var(--brand-navy-800) 35%, transparent);
+}
+
+@utility bg-gradient-promise-hero {
+  background-image: var(--gradient-promise-hero);
+}
+
+@utility bg-gradient-promise-closing {
+  background-image: var(--gradient-promise-closing);
+}
+
+@utility shadow-promise-elevated {
+  box-shadow: 0 16px 40px var(--promise-shadow-elevated);
+}
+
+/* Botão CTA laranja sólido do layout aprovado — visual deliberadamente
+   diferente do Button compartilhado (gradiente/pílula usado no resto do
+   produto): cor chapada, cantos de 8px, conforme o mockup. */
+.promise-cta-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 60px;
+  padding: 16px 36px;
+  background: var(--brand-orange-deep);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 17px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    background-color 0.18s ease,
+    transform 0.12s ease;
+  width: 100%;
+}
+.promise-cta-button:hover {
+  background: var(--brand-orange);
+}
+.promise-cta-button:active {
+  background: var(--brand-orange-light);
+  transform: scale(0.99);
+}
+@media (min-width: 480px) {
+  .promise-cta-button {
+    width: auto;
+  }
+}
+
+.promise-pillar-icon-shape {
+  fill: none;
+  stroke: url(#promise-pillar-gradient);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Ilustração do iceberg — cores remapeadas para os tokens da marca. */
+.iceberg-img-base {
+  fill: #ffffff;
+}
+.iceberg-img-facet-light {
+  fill: color-mix(in srgb, #ffffff 70%, var(--brand-blue) 30%);
+}
+.iceberg-img-facet-accent {
+  fill: color-mix(in srgb, #ffffff 25%, var(--brand-blue) 75%);
+}
+.iceberg-img-dust {
+  fill: color-mix(in srgb, #ffffff 85%, var(--brand-blue) 15%);
+}
+.iceberg-img-shade {
+  fill: color-mix(in srgb, #ffffff 55%, var(--brand-blue) 45%);
+  mix-blend-mode: multiply;
+}
+.iceberg-img-deep {
+  fill: url(#iceberg-img-deep-gradient);
+  mix-blend-mode: multiply;
+}
+
+.stop-iceberg-deep-a {
+  stop-color: color-mix(in srgb, var(--brand-blue) 80%, var(--brand-blue-dark) 20%);
+  stop-opacity: 0.7;
+}
+.stop-iceberg-deep-b {
+  stop-color: var(--brand-blue-dark);
+}
+.stop-promise-pillar-a {
+  stop-color: var(--brand-blue);
+}
+.stop-promise-pillar-b {
+  stop-color: var(--brand-blue-dark);
+}
+
+.iceberg-label {
+  fill: #ffffff;
+  font-family: var(--font-montserrat), sans-serif;
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: 0.01em;
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: var(--promise-facet-stroke);
+  stroke-width: 5px;
+  stroke-linejoin: round;
+}
+.iceberg-label--tip {
+  font-size: 17px;
+}
+
+.iceberg-gargalo {
+  fill: var(--brand-orange-deep);
+}
+.iceberg-gargalo-ring {
+  fill: none;
+  stroke: var(--brand-orange-deep);
+  stroke-width: 1.5;
+  opacity: 0.6;
+}
+.iceberg-gargalo-label {
+  fill: #ffffff;
+  font-family: var(--font-montserrat), sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+}
+.iceberg-gargalo-tag {
+  fill: var(--brand-orange-deep);
+}
+.iceberg-connector {
+  stroke: var(--brand-orange-deep);
+  stroke-width: 1.5;
+  fill: none;
+  stroke-dasharray: 4 4;
+}
+.iceberg-milestones circle {
+  fill: var(--brand-orange-deep);
+}
+.iceberg-milestones text {
+  fill: #ffffff;
+  font-family: var(--font-montserrat), sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+}
+.iceberg-scanner {
+  stroke: var(--brand-blue);
+  stroke-width: 2;
+  opacity: 0.5;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .iceberg-img-particles {
+    opacity: 0;
+    animation: iceberg-fade-in 1.2s ease-out forwards;
+    animation-delay: 0.1s;
+  }
+  .iceberg-img-base,
+  .iceberg-img-facet-light,
+  .iceberg-label--tip {
+    opacity: 0;
+    animation: iceberg-fade-in 0.6s ease-out forwards;
+    animation-delay: 0.2s;
+  }
+  .iceberg-img-facet-accent {
+    opacity: 0;
+    animation: iceberg-fade-in 0.5s ease-out forwards;
+    animation-delay: 0.6s;
+  }
+  .iceberg-img-shade {
+    opacity: 0;
+    animation: iceberg-fade-in 0.6s ease-out forwards;
+    animation-delay: 0.9s;
+  }
+  .iceberg-img-deep {
+    opacity: 0;
+    animation: iceberg-fade-in 0.8s ease-out forwards;
+    animation-delay: 1.2s;
+  }
+  .iceberg-label--demanda {
+    opacity: 0;
+    animation: iceberg-fade-in 0.5s ease-out forwards;
+    animation-delay: 1.5s;
+  }
+  .iceberg-label--conversao {
+    opacity: 0;
+    animation: iceberg-fade-in 0.5s ease-out forwards;
+    animation-delay: 1.7s;
+  }
+  .iceberg-label--escala {
+    opacity: 0;
+    animation: iceberg-fade-in 0.5s ease-out forwards;
+    animation-delay: 1.9s;
+  }
+  .iceberg-scanner {
+    opacity: 0.9;
+    animation: iceberg-scanner-sweep 2.4s ease-in-out 1 both;
+    animation-delay: 2.1s;
+  }
+  .iceberg-gargalo,
+  .iceberg-gargalo-ring {
+    animation: iceberg-gargalo-pulse 2.2s ease-in-out infinite;
+    animation-delay: 3.2s;
+  }
+  .iceberg-connector,
+  .iceberg-milestones,
+  .iceberg-gargalo-label,
+  .iceberg-gargalo-tag {
+    opacity: 0;
+    animation: iceberg-fade-in 0.6s ease-out forwards;
+    animation-delay: 3.4s;
+  }
+}
+
+@keyframes iceberg-scanner-sweep {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(280px);
+  }
+}
+@keyframes iceberg-gargalo-pulse {
+  0%,
+  100% {
+    r: 6;
+    opacity: 1;
+  }
+  50% {
+    r: 9;
+    opacity: 0.6;
+  }
+}
+@keyframes iceberg-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .promise-reveal {
+    opacity: 0;
+    transform: translateY(16px);
+    animation: promise-reveal-up 0.7s ease-out forwards;
+  }
+  .promise-reveal[data-delay="1"] {
+    animation-delay: 0.05s;
+  }
+  .promise-reveal[data-delay="2"] {
+    animation-delay: 0.18s;
+  }
+  .promise-reveal[data-delay="3"] {
+    animation-delay: 0.32s;
+  }
+  .promise-reveal[data-delay="4"] {
+    animation-delay: 0.46s;
+  }
+}
+@keyframes promise-reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
