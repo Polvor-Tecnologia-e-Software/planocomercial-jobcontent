@@ -1,13 +1,19 @@
 import { StyleSheet } from "@react-pdf/renderer";
 
 /**
- * Cores da Job Content, conforme pedido. Só as duas oficiais — o resto
- * da paleta é neutro (cinza/branco), para o documento ficar executivo e
- * legível, não "colorido demais".
+ * Cores da Job Content. Navy + azul são as "oficiais" originais; laranja
+ * foi acrescentado depois (pedido explícito: o PDF precisa se parecer
+ * mais com a tela, que já usa azul/laranja como identidade visual) — o
+ * resto da paleta continua neutro (cinza/branco), pra não virar
+ * "colorido demais" e ainda ficar executivo/legível.
  */
 export const COLORS = {
   navy: "#0C1D49",
   blue: "#153CA3",
+  /** Laranja da marca (mesmo tom do degradê usado na tela, fase 3 do plano de 90 dias) — único acréscimo à paleta "executiva" original, usado só nas 3 fases do plano e nos tipos de ação, para o PDF ficar mais próximo visualmente da tela sem virar "colorido demais". */
+  orange: "#F97925",
+  /** Laranja mais escuro (--brand-orange-deep na tela) — usado no número da 3ª prioridade, mesmo degradê aproximado do priorities-section.tsx. */
+  orangeDeep: "#FF6600",
   text: "#1A1E2B",
   muted: "#5B6478",
   mutedLight: "#8890A3",
@@ -64,30 +70,6 @@ export const PDF_STYLES = StyleSheet.create({
     color: "#C7D0F0",
     marginBottom: 40,
   },
-  coverStatsRow: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  coverStatBox: {
-    flex: 1,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
-    padding: 14,
-  },
-  coverStatLabel: {
-    fontSize: 8,
-    color: "#AEB9E0",
-    marginBottom: 4,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  coverStatValue: {
-    fontSize: 15,
-    fontFamily: "Helvetica-Bold",
-    color: COLORS.white,
-  },
   coverFooterRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -98,6 +80,34 @@ export const PDF_STYLES = StyleSheet.create({
   coverFooterText: {
     fontSize: 8.5,
     color: "#AEB9E0",
+  },
+
+  // ─── Cartões de destaque (Gargalo/Qualidade/Confiança) — espelha
+  // exatamente src/components/result/hero-section.tsx (borda superior
+  // colorida + valor colorido), a cor de cada um vem inline por card. ────
+  heroStatRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 8,
+  },
+  heroStatCard: {
+    flex: 1,
+    backgroundColor: COLORS.bgLight,
+    borderRadius: 6,
+    borderTopWidth: 3,
+    padding: 12,
+  },
+  heroStatLabel: {
+    fontSize: 7.5,
+    color: COLORS.mutedLight,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+    marginBottom: 4,
+  },
+  heroStatValue: {
+    fontSize: 13,
+    fontFamily: "Helvetica-Bold",
+    color: COLORS.navy,
   },
 
   // ─── Cabeçalho/rodapé fixos (páginas de conteúdo) ──────────────────────────
@@ -247,6 +257,20 @@ export const PDF_STYLES = StyleSheet.create({
     width: 130,
     textAlign: "right",
   },
+  /** Etapa com o maior gap — mesma ideia do selo "Maior gargalo" da tela (funnel-leak-map.tsx). */
+  funnelStageRowHighlight: {
+    borderColor: COLORS.orange,
+    borderWidth: 1.5,
+    backgroundColor: "#FFF6EF",
+  },
+  biggestLeakBadge: {
+    fontSize: 6.5,
+    fontFamily: "Helvetica-Bold",
+    color: COLORS.orange,
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
+    marginBottom: 2,
+  },
 
   // ─── Prioridades numeradas ──────────────────────────────────────────────
   priorityNumber: {
@@ -259,4 +283,97 @@ export const PDF_STYLES = StyleSheet.create({
   // ─── Grid de 2/3 colunas ────────────────────────────────────────────────
   row: { flexDirection: "row", gap: 10 },
   col: { flex: 1 },
+
+  // ─── Plano de 90 dias — 3 fases coloridas (espelha a tela) ──────────────
+  phaseCard: {
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+  },
+  phaseHeader: {
+    fontSize: 9,
+    fontFamily: "Helvetica-Bold",
+    color: COLORS.white,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  phaseActionTitle: {
+    fontSize: 10,
+    fontFamily: "Helvetica-Bold",
+    color: COLORS.white,
+    marginBottom: 3,
+  },
+  phaseActionBody: {
+    fontSize: 8.5,
+    color: "rgba(255,255,255,0.9)",
+    lineHeight: 1.4,
+    marginBottom: 6,
+  },
+  phaseActionDetail: {
+    fontSize: 8,
+    color: "rgba(255,255,255,0.85)",
+    lineHeight: 1.4,
+    marginBottom: 3,
+  },
+  contentBriefBox: {
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: 6,
+    padding: 7,
+    marginBottom: 6,
+  },
+  contentBriefHeading: {
+    fontSize: 7,
+    fontFamily: "Helvetica-Bold",
+    color: "rgba(255,255,255,0.85)",
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
+    marginBottom: 4,
+  },
+  contentBriefSubtitle: {
+    fontSize: 8,
+    fontFamily: "Helvetica-Oblique",
+    color: "rgba(255,255,255,0.85)",
+    lineHeight: 1.4,
+    marginBottom: 2,
+  },
+  contentBriefItemTitle: {
+    fontSize: 8,
+    fontFamily: "Helvetica-Bold",
+    color: COLORS.white,
+    lineHeight: 1.4,
+  },
+  contentBriefItemBody: {
+    fontSize: 8,
+    color: "rgba(255,255,255,0.9)",
+    lineHeight: 1.4,
+    marginTop: 1,
+  },
+  phaseActionMetaLabel: {
+    fontSize: 7,
+    color: "rgba(255,255,255,0.75)",
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
+  },
+  phaseActionMetaValue: {
+    fontSize: 8,
+    fontFamily: "Helvetica-Bold",
+    color: COLORS.white,
+  },
+  phaseActionCriteria: {
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: 6,
+    padding: 7,
+    marginTop: 6,
+  },
+  actionTypeBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: COLORS.white,
+    borderRadius: 999,
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    fontSize: 7,
+    fontFamily: "Helvetica-Bold",
+    marginBottom: 6,
+  },
 });

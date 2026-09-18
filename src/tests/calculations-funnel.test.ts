@@ -17,6 +17,7 @@ function emptyMetrics(overrides: Partial<CommercialMetrics> = {}): CommercialMet
     teamSize: null,
     monthlyGoal: null,
     currentMonthlySales: null,
+    currentMonthlyRevenue: null,
     opportunitiesPerMonth: null,
     meetingsPerMonth: null,
     proposalsPerMonth: null,
@@ -67,6 +68,11 @@ describe("extractCommercialMetrics", () => {
     expect(metrics.monthlyGoal).toBe(100_000);
     expect(metrics.currentMonthlySales).toBe(12);
     expect(metrics.salesPerMonth).toBe(12);
+  });
+
+  it("lê currentMonthlyRevenue (U10) independente do desafio — pergunta universal e opcional", () => {
+    expect(extractCommercialMetrics({ U10: 60_000 }, "D1").currentMonthlyRevenue).toBe(60_000);
+    expect(extractCommercialMetrics({}, "D1").currentMonthlyRevenue).toBeNull();
   });
 
   it("lê o volume de cada etapa do funil (U7, U8, U9) independente do desafio", () => {
@@ -222,6 +228,43 @@ describe("computeGoalReverseEngineering", () => {
     expect(result.requiredOpportunities).not.toBeNull();
     expect(result.requiredLeads).not.toBeNull();
     expect(result.missingData).toEqual([]);
+  });
+
+  describe("currentMonthlyRevenue (U10) — desconta faturamento já existente da meta", () => {
+    it("sem currentMonthlyRevenue, requiredCustomers trata a meta como se a empresa partisse de R$0 (comportamento antigo) e registra a premissa", () => {
+      const metrics = emptyMetrics({ monthlyGoal: 100_000, averageTicket: 10_000 });
+      const result = computeGoalReverseEngineering(metrics, EMPTY_RATES);
+
+      expect(result.requiredCustomers).toBe(10);
+      expect(result.assumptions).toContain(
+        "Faturamento atual (U10) não informado — a meta foi tratada como se a empresa partisse de R$0, o que pode inflar os números necessários se já existir faturamento recorrente.",
+      );
+    });
+
+    it("com currentMonthlyRevenue, requiredCustomers usa o GAP de receita (meta - faturamento atual), não a meta inteira", () => {
+      const metrics = emptyMetrics({
+        monthlyGoal: 100_000,
+        averageTicket: 10_000,
+        currentMonthlyRevenue: 60_000,
+      });
+      const result = computeGoalReverseEngineering(metrics, EMPTY_RATES);
+
+      expect(result.requiredCustomers).toBe(4); // ceil((100000-60000)/10000)
+      expect(result.assumptions.some((a) => a.includes("Faturamento atual (U10) não informado"))).toBe(
+        false,
+      );
+    });
+
+    it("faturamento atual igual ou maior que a meta zera requiredCustomers, nunca fica negativo", () => {
+      const metrics = emptyMetrics({
+        monthlyGoal: 50_000,
+        averageTicket: 10_000,
+        currentMonthlyRevenue: 80_000,
+      });
+      const result = computeGoalReverseEngineering(metrics, EMPTY_RATES);
+
+      expect(result.requiredCustomers).toBe(0);
+    });
   });
 
   it("marca como premissa quando uma taxa usada veio de uma faixa autodeclarada", () => {

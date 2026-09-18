@@ -1,12 +1,23 @@
 /**
  * Seção 3: engenharia reversa da meta.
  *
- * requiredCustomers = ceil(monthlyGoal / averageTicket)
+ * revenueGap = max(monthlyGoal - (currentMonthlyRevenue ?? 0), 0)
+ * requiredCustomers = ceil(revenueGap / averageTicket)
  * currentCustomerGap = max(requiredCustomers - currentMonthlySales, 0)
  * requiredProposals = ceil(requiredCustomers / proposalToSaleRate)
  * requiredMeetings = ceil(requiredProposals / meetingToProposalRate)
  * requiredOpportunities = ceil(requiredMeetings / opportunityToMeetingRate)
  * requiredLeads = ceil(requiredOpportunities / leadToOpportunityRate)
+ *
+ * currentMonthlyRevenue (U10) é opcional. Quando ausente, revenueGap cai
+ * de volta em monthlyGoal puro (equivalente a tratar a empresa como se já
+ * partisse de R$0) — é o comportamento histórico deste motor, mantido
+ * como fallback para não regredir quando a pessoa não responde U10. Mas
+ * sem esse dado, "clientes necessários" fica inflado para qualquer
+ * empresa que já tenha faturamento recorrente que não vem das vendas
+ * novas do mês (U5) — por isso essa omissão vira uma entrada em
+ * `assumptions`, não um missingData que travaria a cadeia (o cálculo
+ * segue válido, só menos preciso).
  *
  * A cadeia é sequencial: se uma taxa estiver ausente, a engenharia reversa
  * PARA naquele degrau — os valores já calculados (mais próximos da meta)
@@ -52,7 +63,13 @@ export function computeGoalReverseEngineering(
     return { ...EMPTY, missingData, assumptions };
   }
 
-  const requiredCustomers = roundUpToInt(metrics.monthlyGoal / metrics.averageTicket);
+  if (metrics.currentMonthlyRevenue === null) {
+    assumptions.push(
+      "Faturamento atual (U10) não informado — a meta foi tratada como se a empresa partisse de R$0, o que pode inflar os números necessários se já existir faturamento recorrente.",
+    );
+  }
+  const revenueGap = Math.max(metrics.monthlyGoal - (metrics.currentMonthlyRevenue ?? 0), 0);
+  const requiredCustomers = roundUpToInt(revenueGap / metrics.averageTicket);
 
   let currentCustomerGap: number | null = null;
   if (metrics.currentMonthlySales === null) {

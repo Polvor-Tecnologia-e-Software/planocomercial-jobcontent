@@ -24,9 +24,10 @@ const CONFIDENCE_LABEL: Record<ConfidenceLevel, string> = {
  * em destaque, 3 cartões de contexto (gargalo, qualidade de dados,
  * confiança) — deliberadamente SEM os scores detalhados por dimensão
  * aqui, para não competir pela atenção com o diagnóstico em si. O risco
- * secundário não aparece mais como cartão (pedido do usuário) — segue
- * calculado e usado internamente para decidir a seção de Inbound
- * Marketing (ver inbound-marketing-section.tsx), só não é mais exibido.
+ * secundário não aparece mais como cartão (pedido do usuário) — ainda é
+ * calculado e persistido (diagnostics.secondary_risk), mas não tem mais
+ * nenhum consumidor na tela desde a remoção da seção de Inbound
+ * Marketing.
  */
 export function HeroSection({
   companyName,

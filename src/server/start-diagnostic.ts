@@ -17,6 +17,8 @@ const LGPD_CONSENT_VERSION = "capture-form-implicit-v1";
 
 export type StartDiagnosticInput = {
   name: string;
+  /** Opcional — nem toda pessoa quer compartilhar telefone. Enviado ao RD Station como mobile_phone (ver send-rd-station-conversion.ts). */
+  phone?: string;
   companyName: string;
   /** Opcional — seção 4 do BRD: "aceitar ausência de site". */
   website?: string;
@@ -34,8 +36,8 @@ export type StartDiagnosticInput = {
 
 /**
  * Primeira captura da jornada (Tela 2 do BRD): cria (ou reaproveita) a
- * empresa, cria o lead parcial (nome, e-mail e UTMs — cargo e WhatsApp
- * vêm só na captura final, seção 4) e cria o diagnóstico com status
+ * empresa, cria o lead parcial (nome, telefone opcional, e-mail e UTMs —
+ * cargo vem só na captura final, seção 4) e cria o diagnóstico com status
  * "started". Registra também o evento de analytics "start_diagnostic"
  * (seção 20 do BRD).
  *
@@ -63,6 +65,7 @@ export async function startDiagnostic(
   const lead = await leads.createLead({
     company_id: company.id,
     name: input.name,
+    phone: input.phone ?? null,
     email: input.email,
     utm_source: input.utm?.source ?? null,
     utm_medium: input.utm?.medium ?? null,

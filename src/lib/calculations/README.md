@@ -28,13 +28,25 @@ Implementado:
   o ponto único de entrada puro.
 
 **Catálogo de perguntas**: `monthlyGoal` (U4), `currentMonthlySales`/`salesPerMonth`
-(U5) e o volume mensal de cada estágio do funil (`leadsPerMonth` U6,
-`opportunitiesPerMonth` U7, `meetingsPerMonth` U8, `proposalsPerMonth` U9)
-são perguntas UNIVERSAIS (`src/lib/challenges/challenge-config.ts`) — toda
-pessoa responde, independente do desafio escolhido. Isso existe desde uma
-etapa posterior à implementação original deste motor: antes disso, nenhuma
-dessas perguntas existia, e a engenharia reversa/mapa de vazamento quase
-nunca calculavam nada de verdade com dado real (só com dado sintético em
+(U5), `currentMonthlyRevenue` (U10) e o volume mensal de cada estágio do
+funil (`leadsPerMonth` U6, `opportunitiesPerMonth` U7, `meetingsPerMonth`
+U8, `proposalsPerMonth` U9) são perguntas UNIVERSAIS
+(`src/lib/challenges/challenge-config.ts`) — toda pessoa responde,
+independente do desafio escolhido. Isso existe desde uma etapa posterior
+à implementação original deste motor: antes disso, nenhuma dessas
+perguntas existia, e a engenharia reversa/mapa de vazamento quase nunca
+calculavam nada de verdade com dado real (só com dado sintético em
 teste). Continua correto e esperado que, mesmo assim, algum estágio fique
 com `missingData` quando a pessoa não souber responder uma dessas
 perguntas — nunca é preenchido com um benchmark inventado.
+
+`currentMonthlyRevenue` (U10) é a única universal verdadeiramente
+opcional no sentido "sem ela, o motor não trava" — sem ela,
+`requiredCustomers` cai de volta em `ceil(monthlyGoal / averageTicket)`
+(trata a meta como se a empresa partisse de R$0). Quando respondida,
+`requiredCustomers = ceil((monthlyGoal - currentMonthlyRevenue) / averageTicket)`,
+descontando o faturamento que já existe antes de calcular quantos
+clientes novos faltam — relevante para qualquer empresa com receita
+recorrente (contratos já fechados, assinaturas) que não vem das vendas
+novas do mês (U5). A ausência vira uma entrada em `assumptions`, nunca em
+`missingData` (o cálculo segue válido, só menos preciso).

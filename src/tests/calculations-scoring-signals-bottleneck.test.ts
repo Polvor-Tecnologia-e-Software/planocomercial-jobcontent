@@ -108,6 +108,25 @@ describe("evaluateSignals", () => {
     expect(signal?.severity).toBe("high");
   });
 
+  it("NO_CRM dispara quando U11 é 'nao', com severidade alta — U11 é universal, dispara independente do desafio", () => {
+    expect(evaluateSignals({ U11: "nao" }, "D2").map((s) => s.code)).toContain("NO_CRM");
+    const signal = evaluateSignals({ U11: "nao" }, "D2").find((s) => s.code === "NO_CRM");
+    expect(signal?.severity).toBe("high");
+    expect(signal?.dimension).toBe("management");
+  });
+
+  it("UNSTRUCTURED_CRM dispara quando U11 é 'usa_desorganizado', com severidade média", () => {
+    const signals = evaluateSignals({ U11: "usa_desorganizado" }, "D4");
+    const signal = signals.find((s) => s.code === "UNSTRUCTURED_CRM");
+    expect(signal?.severity).toBe("medium");
+  });
+
+  it("nenhum sinal de CRM dispara quando U11 é 'usa_estruturado'", () => {
+    const signals = evaluateSignals({ U11: "usa_estruturado" }, "D3");
+    expect(signals.map((s) => s.code)).not.toContain("NO_CRM");
+    expect(signals.map((s) => s.code)).not.toContain("UNSTRUCTURED_CRM");
+  });
+
   it("NO_MQL_CRITERIA varia a severidade entre 'não existe' (alta) e 'existe mas não seguido' (média)", () => {
     expect(evaluateSignals({ D2_Q1: "nao" }, "D2").find((s) => s.code === "NO_MQL_CRITERIA")?.severity).toBe(
       "high",

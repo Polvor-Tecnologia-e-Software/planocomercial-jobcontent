@@ -51,6 +51,27 @@ describe("startDiagnosticSchema", () => {
     expect(result.success).toBe(false);
   });
 
+  describe("telefone (opcional, com ou sem máscara)", () => {
+    it("aceita ausência de telefone", () => {
+      const result = startDiagnosticSchema.safeParse({ ...baseInput, phone: "" });
+      expect(result.success).toBe(true);
+      if (result.success) expect(result.data.phone).toBeUndefined();
+    });
+
+    it.each(["(11) 98765-4321", "11987654321", "(11) 3265-4321", "1132654321"])(
+      "aceita %s (celular ou fixo, com ou sem máscara)",
+      (phone) => {
+        const result = startDiagnosticSchema.safeParse({ ...baseInput, phone });
+        expect(result.success).toBe(true);
+      },
+    );
+
+    it("rejeita um telefone com poucos dígitos", () => {
+      const result = startDiagnosticSchema.safeParse({ ...baseInput, phone: "1198765" });
+      expect(result.success).toBe(false);
+    });
+  });
+
   it("rejeita nome de empresa muito curto", () => {
     const result = startDiagnosticSchema.safeParse({ ...baseInput, companyName: "A" });
     expect(result.success).toBe(false);

@@ -141,9 +141,44 @@ export type ChallengeDefinition = {
  * Universais (não perguntas específicas de um desafio) de propósito: o
  * funil completo é útil independente de qual sintoma a pessoa escolheu
  * relatar primeiro.
+ *
+ * U1/U4/U5 (redação revisada após teste real, feedback do Jean): a
+ * pessoa respondendo pode confundir período (anual x mensal) e confundir
+ * "situação atual" com "meta desejada" — um ticket médio ANUAL respondido
+ * onde o motor espera um valor por venda distorce toda a engenharia
+ * reversa (requiredCustomers = monthlyGoal / averageTicket vira um número
+ * artificialmente baixo). Por isso U1 agora deixa explícito que é o valor
+ * de UMA venda, U4 reforça "MENSAL" em caixa alta, e U5 deixa claro que é
+ * a situação de HOJE, não a meta (que já foi perguntada em U4).
+ *
+ * U10 (faturamento mensal atual): sem ela, a engenharia reversa
+ * (reverse-engineering.ts) trata monthlyGoal como se a empresa partisse
+ * de R$0, mesmo que já exista faturamento — o que infla artificialmente
+ * "clientes necessários" para qualquer empresa com receita recorrente
+ * (contratos já fechados, assinaturas) que não vem das vendas novas do
+ * mês (U5). Opcional: se não respondida, o motor cai de volta no
+ * comportamento antigo (meta tratada a partir de zero), sem regressão.
+ *
+ * U11 (maturidade de CRM): antes dela, "usa CRM?"/"está estruturado?" só
+ * eram perguntados de forma fragmentada e condicional a um desafio
+ * específico (D1_Q3 só se D1+"não sei"; D3_Q3 só em D3; D5_Q1/Q3 só em D5;
+ * D6_Q2 só em D6) — quem escolhia D2 ou D4, por exemplo, nunca respondia
+ * nada sobre CRM. Isso é um problema real: o motor sempre exige pelo
+ * menos 1 ação "crm_pipeline" por fase do plano de 90 dias (ver
+ * COMMERCIAL_ACTIONS_BLOCK em commercial-plan-prompt.ts), mas sem saber
+ * se a empresa TEM CRM, a IA podia recomendar "definir critério de
+ * estágio no CRM" pra uma empresa sem CRM nenhum. U11 alimenta os sinais
+ * NO_CRM/UNSTRUCTURED_CRM (src/lib/calculations/signals.ts), que disparam
+ * independente do desafio escolhido — mesmo padrão já usado por
+ * LOW_NEW_LEADS_VOLUME (baseado em U6).
  */
 export const UNIVERSAL_QUESTIONS: readonly ChallengeQuestion[] = [
-  { key: "U1", prompt: "Qual é o ticket médio de uma venda fechada?", type: "currency" },
+  {
+    key: "U1",
+    prompt:
+      "Qual é o ticket médio de uma venda fechada? (o valor de UMA venda — não o faturamento do mês nem do ano)",
+    type: "currency",
+  },
   {
     key: "U2",
     prompt: "Qual é o ciclo médio de vendas, da primeira conversa ao fechamento (em dias)?",
@@ -156,13 +191,20 @@ export const UNIVERSAL_QUESTIONS: readonly ChallengeQuestion[] = [
   },
   {
     key: "U4",
-    prompt: "Qual é a meta de faturamento mensal da empresa?",
+    prompt: "Qual é a meta de faturamento MENSAL da empresa? (quanto vocês querem faturar por mês)",
     type: "currency",
   },
   {
     key: "U5",
-    prompt: "Quantas vendas (novos clientes fechados) a empresa faz por mês, em média?",
+    prompt:
+      "HOJE, sem contar a meta: quantas vendas (novos clientes fechados) a empresa faz por mês, em média?",
     type: "number",
+  },
+  {
+    key: "U10",
+    prompt:
+      "Qual é o faturamento MENSAL ATUAL da empresa? (o que vocês faturam hoje — não a meta que você respondeu antes)",
+    type: "currency",
   },
   {
     key: "U6",
@@ -183,6 +225,17 @@ export const UNIVERSAL_QUESTIONS: readonly ChallengeQuestion[] = [
     key: "U9",
     prompt: "Quantas propostas ou orçamentos são enviados por mês, em média?",
     type: "number",
+  },
+  {
+    key: "U11",
+    prompt:
+      "Vocês usam algum CRM (mesmo simples, como HubSpot, Pipedrive, RD Station CRM, Salesforce etc.) para gerenciar leads e oportunidades?",
+    type: "single_select",
+    options: [
+      { value: "nao", label: "Não, não usamos" },
+      { value: "usa_desorganizado", label: "Usamos, mas está desorganizado ou pouco usado pela equipe" },
+      { value: "usa_estruturado", label: "Usamos e está bem estruturado (etapas definidas, dados preenchidos)" },
+    ],
   },
 ] as const;
 
@@ -493,6 +546,22 @@ export const CHALLENGES: Record<SelectedChallenge, ChallengeDefinition> = {
         key: "STALE_FUNNEL_DATA",
         label: "Dados do funil desatualizados ou incompletos no CRM",
         source: "crm_field_mapping",
+        provenance: "draft",
+      },
+      // NO_CRM/UNSTRUCTURED_CRM: baseados em U11 (universal), disparam
+      // independente do desafio escolhido — catalogados aqui em D5
+      // (gestão) por ser o lar mais natural, mesmo padrão já usado por
+      // LOW_NEW_LEADS_VOLUME em D1 (ver comentário de U11 acima).
+      {
+        key: "NO_CRM",
+        label: "Empresa não usa nenhum CRM para gerenciar leads e oportunidades",
+        source: "answer",
+        provenance: "draft",
+      },
+      {
+        key: "UNSTRUCTURED_CRM",
+        label: "CRM existe mas está desorganizado ou pouco usado pela equipe",
+        source: "answer",
         provenance: "draft",
       },
     ],

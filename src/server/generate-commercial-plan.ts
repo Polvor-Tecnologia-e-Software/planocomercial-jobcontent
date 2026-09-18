@@ -4,6 +4,7 @@ import { parseServerEnv } from "@/config/env.server";
 import { generateCommercialPlanContent } from "@/lib/ai/commercial-plan";
 import { COMMERCIAL_PLAN_PROMPT_VERSION } from "@/lib/ai/commercial-plan-prompt";
 import { AiResponseValidationError } from "@/lib/ai/errors";
+import { groundFunnelIndicators } from "@/lib/ai/indicator-grounding";
 import { findUngroundedNumbers, UngroundedNumberError } from "@/lib/ai/numeric-guard";
 import { hashContent } from "@/lib/site-analysis/hash";
 import { aiReports, diagnostics } from "@/lib/database";
@@ -63,7 +64,11 @@ export async function generateCommercialPlan(diagnosticId: string): Promise<Gene
   if (cached?.response_json) {
     const validated = CommercialPlanSchema.safeParse(cached.response_json);
     if (validated.success) {
-      return { status: "cached", plan: validated.data, reportId: cached.id };
+      // Idempotente: reaplicar a correção a um plano já correto não muda
+      // nada. Cobre o caso raro de um cache já existente na hora em que
+      // este código foi corrigido (ver groundFunnelIndicators).
+      const plan = groundFunnelIndicators(validated.data, context.funnelAnalysis.requiredFunnel);
+      return { status: "cached", plan, reportId: cached.id };
     }
     // Cache corrompido ou de um formato antigo sem versão nova o
     // suficiente para invalidar o hash — trata como cache miss e segue
@@ -88,29 +93,38 @@ export async function generateCommercialPlan(diagnosticId: string): Promise<Gene
   try {
     const callResult = await generateCommercialPlanContent(context);
 
-    const ungrounded = findUngroundedNumbers(callResult.plan, contextJson);
+    // Corrige a meta dos indicadores dos 5 estágios do funil com o valor
+    // real já calculado — nunca confia na IA para esse número específico
+    // (ver src/lib/ai/indicator-grounding.ts para o caso real que motivou
+    // isso: a IA citou o requiredFunnel do estágio errado).
+    const plan = groundFunnelIndicators(callResult.plan, context.funnelAnalysis.requiredFunnel);
+
+    const ungrounded = findUngroundedNumbers(plan, contextJson);
     if (ungrounded.length > 0) {
       throw new UngroundedNumberError(ungrounded);
     }
 
     await aiReports.updateAiReportStatus(report.id, "validated", {
-      response_json: callResult.plan,
+      response_json: plan,
       input_tokens: callResult.inputTokens,
       output_tokens: callResult.outputTokens,
       latency_ms: callResult.latencyMs,
     });
 
-    return { status: "generated", plan: callResult.plan, reportId: report.id };
+    return { status: "generated", plan, reportId: report.id };
   } catch (err) {
-    // Só nome + mensagem no log — nunca o objeto de erro bruto do SDK
-    // (pode carregar cabeçalhos de requisição) nem qualquer segredo.
+    // Só nome + mensagem — nunca o objeto de erro bruto do SDK (pode
+    // carregar cabeçalhos de requisição) nem qualquer segredo. Tanto no
+    // log quanto (truncado) em ai_reports.last_error: sem isso, depurar
+    // uma falha exigia achar a linha certa no terminal do servidor — só
+    // o motivo genérico ("invalid_output") ficava no banco, sem detalhe
+    // nenhum sobre QUAL número não bateu ou QUAL campo do schema falhou.
     const errorSummary = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
     console.error("[generate-commercial-plan] Falha ao gerar plano:", errorSummary);
     const reason = classifyFailure(err);
-    // Só o motivo classificado (um dos poucos valores fixos abaixo) é
-    // persistido — nunca a mensagem bruta do erro, que poderia incluir
-    // detalhes internos do SDK.
-    await aiReports.updateAiReportStatus(report.id, "failed", { last_error: reason });
+    await aiReports.updateAiReportStatus(report.id, "failed", {
+      last_error: `${reason} | ${errorSummary}`.slice(0, 500),
+    });
     return { status: "failed", reason, reportId: report.id };
   }
 }

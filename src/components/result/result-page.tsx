@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { CtaSection } from "@/components/result/cta-section";
 import { FunnelLeakMap } from "@/components/result/funnel-leak-map";
 import { HeroSection } from "@/components/result/hero-section";
-import { InboundMarketingSection } from "@/components/result/inbound-marketing-section";
 import { IndicatorsSection } from "@/components/result/indicators-section";
 import { LimitationsSection } from "@/components/result/limitations-section";
 import { Plan90DaysSection } from "@/components/result/plan-90-days-section";
@@ -60,10 +59,6 @@ export function ResultPage({ state }: ResultPageProps) {
       <RootCauseChain description={plan.rootCause.description} evidence={plan.rootCause.evidence} />
       <PrioritiesSection priorities={plan.priorities} />
       <Plan90DaysSection plan={plan.plan90Days} />
-      <InboundMarketingSection
-        primaryBottleneck={state.primaryBottleneck}
-        secondaryRisk={state.secondaryRisk}
-      />
       <WeeklyAgendaSection agenda={plan.weeklyManagerAgenda} />
       <IndicatorsSection indicators={plan.indicators} />
       <SeoOpportunitiesSection opportunities={state.seoOpportunities} />

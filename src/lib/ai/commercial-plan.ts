@@ -20,8 +20,27 @@ export type CommercialPlanAiCall = {
   promptVersion: string;
 };
 
-/** Saída é grande (12 blocos, até 3x5 ações, agenda semanal) — orçamento generoso mas ainda limitado. */
-const MAX_OUTPUT_TOKENS = 6_000;
+/**
+ * Saída é grande (12 blocos, até 3x5 ações — cada uma com 2-4 ideias em
+ * `details`; a cadência de conteúdo OBRIGA 2 content_blog + 1
+ * rich_material no PLANO INTEIRO — não por fase, revertido de "por fase"
+ * depois de pesar o custo em tokens —, cada um com seu blogBrief/
+ * richMaterialBrief completo e desenvolvido, sem versão rasa; ações
+ * "crm_pipeline" que são cadência de follow-up também podem trazer um
+ * cadenceBrief com a copy de 2-5 toques): orçamento generoso mesmo sendo
+ * poucas peças, porque cada uma é bem completa.
+ *
+ * O modelo (AI_MODEL em .env.local) é "gpt-4.1-mini" (trocado de
+ * "gpt-4o-mini" quando a cadência ainda era maior, por fase — teto de
+ * saída de ~32.768 tokens, o dobro do anterior). Com a cadência de volta
+ * a um total pequeno, esse teto maior deixou de ser indispensável, mas
+ * não há motivo pra voltar ao modelo anterior (mesmo custo por token
+ * relevante, mais headroom). 18.000 aqui é generoso o bastante pro volume
+ * atual, com boa margem abaixo do teto real do modelo. JSON truncado =
+ * erro de validação, indistinguível de um erro de schema real sem olhar
+ * o log — ver src/lib/ai/commercial-plan-prompt.ts.
+ */
+const MAX_OUTPUT_TOKENS = 18_000;
 
 /**
  * Chamada de IA do plano comercial de 90 dias: monta o prompt (com o

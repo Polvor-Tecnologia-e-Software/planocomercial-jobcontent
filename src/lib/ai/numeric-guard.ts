@@ -25,6 +25,29 @@ function normalizeNumber(raw: string): string {
   return raw.replace(",", ".").replace(/^0+(?=\d)/, "");
 }
 
+/**
+ * Candidatos de normalização para um número CITADO PELA IA no texto livre
+ * do plano — além da normalização padrão (vírgula decimal -> ponto),
+ * inclui a leitura "ponto como separador de milhar" (ex.: "300.000" = 300
+ * mil), convenção comum em pt-BR para valores em reais. Bug real: a IA
+ * escreveu a própria meta (goalGapInterpretation citando "R$ 300.000",
+ * quando o contexto tem monthlyGoal=300000 puro) e a validação rejeitou
+ * como número inventado, mesmo sendo o valor certo só formatado diferente.
+ * Só usado do lado do texto da IA — buildAllowedNumberSet (o que veio do
+ * CONTEXTO) nunca passa por aqui, pra não abrir uma brecha nova do lado
+ * que é fonte da verdade.
+ */
+function candidateNormalizations(raw: string): string[] {
+  const candidates = [normalizeNumber(raw)];
+
+  const thousandsMatch = /^(\d+)\.(\d{3})$/.exec(raw);
+  if (thousandsMatch) {
+    candidates.push(`${thousandsMatch[1]}${thousandsMatch[2]}`.replace(/^0+(?=\d)/, ""));
+  }
+
+  return candidates;
+}
+
 export function buildAllowedNumberSet(contextJson: string): Set<string> {
   const tokens = extractNumericTokens(contextJson).map(normalizeNumber);
   return new Set([...tokens, ...STRUCTURAL_SAFE_NUMBERS]);
@@ -60,7 +83,8 @@ export function findUngroundedNumbers(
 
   for (const { field, text } of riskFieldsOf(plan)) {
     for (const raw of extractNumericTokens(text)) {
-      if (!allowed.has(normalizeNumber(raw))) {
+      const isGrounded = candidateNormalizations(raw).some((candidate) => allowed.has(candidate));
+      if (!isGrounded) {
         findings.push({ field, value: raw });
       }
     }

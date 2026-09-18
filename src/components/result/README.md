@@ -13,12 +13,14 @@ que combina o funil determinístico da Etapa 2 com o `ai_reports` da Etapa
   dispara/tenta de novo a geração.
 - `hero-section.tsx`, `funnel-leak-map.tsx`, `root-cause-chain.tsx`,
   `priorities-section.tsx`, `plan-90-days-section.tsx`,
-  `inbound-marketing-section.tsx` (só quando o gargalo/risco é demanda),
   `weekly-agenda-section.tsx`, `indicators-section.tsx`,
-  `limitations-section.tsx`, `cta-section.tsx` — uma seção por arquivo,
-  seguindo a numeração do pedido original.
+  `seo-opportunities-section.tsx`, `limitations-section.tsx`,
+  `cta-section.tsx` — uma seção por arquivo, seguindo a numeração do
+  pedido original. (`inbound-marketing-section.tsx` existiu e foi
+  removida — pedido do usuário.)
 - `dimension-labels.ts` — rótulos em português das 6 dimensões, única
   fonte usada em toda a tela.
 
-PDF ainda não implementado — botão "Baixar plano em PDF" existe,
-desabilitado, sem download falso.
+PDF implementado (`src/lib/pdf/commercial-plan-document.tsx` +
+`src/server/generate-commercial-plan-pdf.tsx`) — espelha o mesmo
+conteúdo desta tela.

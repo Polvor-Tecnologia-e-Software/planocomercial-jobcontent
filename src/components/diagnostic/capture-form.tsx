@@ -20,6 +20,23 @@ import { startDiagnosticAction } from "@/server/actions/start-diagnostic-action"
 import { initialStartDiagnosticState } from "@/server/actions/start-diagnostic-initial-state";
 
 /**
+ * Aplica a máscara de telefone brasileiro enquanto a pessoa digita —
+ * (XX) XXXX-XXXX pra fixo (10 dígitos) ou (XX) XXXXX-XXXX pra celular (11
+ * dígitos), progressivamente conforme os dígitos entram. Sempre extrai só
+ * os dígitos do valor atual do campo (que já vem formatado) antes de
+ * reformatar — mesma técnica do CurrencyInput em adaptive-diagnostic-journey.tsx,
+ * funciona tanto para digitar quanto para apagar sem precisar de biblioteca de máscara.
+ */
+function formatBrazilianPhone(rawValue: string): string {
+  const digits = rawValue.replace(/\D/g, "").slice(0, 11);
+  if (digits.length === 0) return "";
+  if (digits.length <= 2) return `(${digits}`;
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
+/**
  * Botão de envio isolado em um componente próprio porque useFormStatus()
  * só enxerga o estado de pending do <form> mais próximo — precisa estar
  * dentro do <form>, não no componente pai que o renderiza.
@@ -67,6 +84,7 @@ export function CaptureForm() {
   const searchParams = useSearchParams();
 
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [website, setWebsite] = useState("");
   const [email, setEmail] = useState("");
@@ -137,6 +155,30 @@ export function CaptureForm() {
               {state.fieldErrors?.name ? (
                 <p id="name-error" role="alert" className="text-destructive text-sm">
                   {state.fieldErrors.name}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="phone">
+                Telefone{" "}
+                <span className="text-muted-foreground font-normal">(opcional)</span>
+              </Label>
+              <Input
+                id="phone"
+                name="phone"
+                type="tel"
+                inputMode="tel"
+                placeholder="(11) 98765-4321"
+                autoComplete="tel"
+                value={phone}
+                onChange={(event) => setPhone(formatBrazilianPhone(event.target.value))}
+                aria-invalid={Boolean(state.fieldErrors?.phone)}
+                aria-describedby={state.fieldErrors?.phone ? "phone-error" : undefined}
+              />
+              {state.fieldErrors?.phone ? (
+                <p id="phone-error" role="alert" className="text-destructive text-sm">
+                  {state.fieldErrors.phone}
                 </p>
               ) : null}
             </div>
@@ -260,8 +302,8 @@ export function CaptureForm() {
                 LGPD_CONSENT_VERSION em src/server/start-diagnostic.ts. */}
             <p className="text-muted-foreground text-xs">
               Ao continuar, você concorda em receber este diagnóstico e contato comercial
-              da Job Content por e-mail sobre o Plano Comercial Inteligente em 90 Dias™.
-              Tratamos seus dados conforme a LGPD.
+              da Job Content por e-mail{phone ? " ou telefone/WhatsApp" : ""} sobre o Plano
+              Comercial Inteligente em 90 Dias™. Tratamos seus dados conforme a LGPD.
             </p>
 
             <SubmitButton />

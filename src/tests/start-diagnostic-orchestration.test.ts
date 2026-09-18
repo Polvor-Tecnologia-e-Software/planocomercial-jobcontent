@@ -74,6 +74,7 @@ describe("startDiagnostic", () => {
     expect(createLead).toHaveBeenCalledWith({
       company_id: "company-1",
       name: "Maria Souza",
+      phone: null,
       email: "maria@codebit.com.br",
       utm_source: "google",
       utm_medium: "cpc",
@@ -90,6 +91,21 @@ describe("startDiagnostic", () => {
 
     expect(result).toEqual(
       expect.objectContaining({ id: "diagnostic-1", status: "started" }),
+    );
+  });
+
+  it("passa o telefone para createLead quando informado", async () => {
+    await startDiagnostic({
+      name: "Maria Souza",
+      phone: "(11) 98765-4321",
+      companyName: "CodeBit Tecnologia",
+      website: "codebit.com.br",
+      email: "maria@codebit.com.br",
+      keywords: ["a", "b", "c", "d", "e"],
+    });
+
+    expect(createLead).toHaveBeenCalledWith(
+      expect.objectContaining({ phone: "(11) 98765-4321" }),
     );
   });
 

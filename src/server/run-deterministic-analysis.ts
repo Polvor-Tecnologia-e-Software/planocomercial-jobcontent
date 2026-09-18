@@ -72,6 +72,7 @@ export async function runDeterministicAnalysis(
         proposalsPerMonth: analysis.metrics.proposalsPerMonth,
         salesPerMonth: analysis.metrics.salesPerMonth,
         currentMonthlySales: analysis.metrics.currentMonthlySales,
+        currentMonthlyRevenue: analysis.metrics.currentMonthlyRevenue,
       },
       required_funnel: {
         requiredCustomers: analysis.reverseEngineering.requiredCustomers,

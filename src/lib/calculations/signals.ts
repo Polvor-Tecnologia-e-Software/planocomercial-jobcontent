@@ -172,6 +172,22 @@ const SIGNAL_RULES: readonly SignalRule[] = [
       return null;
     },
   },
+
+  // ─── U11 — maturidade de CRM (universal, dispara pra qualquer desafio) ──
+  {
+    code: "NO_CRM",
+    dimension: "management",
+    evaluate: (answers) =>
+      answers.U11 === "nao" ? { severity: "high", evidence: evidence("U11", "nao") } : null,
+  },
+  {
+    code: "UNSTRUCTURED_CRM",
+    dimension: "management",
+    evaluate: (answers) =>
+      answers.U11 === "usa_desorganizado"
+        ? { severity: "medium", evidence: evidence("U11", "usa_desorganizado") }
+        : null,
+  },
 ];
 
 /**

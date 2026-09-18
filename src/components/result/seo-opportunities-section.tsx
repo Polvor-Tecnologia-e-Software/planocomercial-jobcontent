@@ -49,9 +49,12 @@ export function SeoOpportunitiesSection({ opportunities }: SeoOpportunitiesSecti
       <div className="flex flex-col gap-1">
         <h2 className="text-xl font-semibold sm:text-2xl">Oportunidades para a sua empresa</h2>
         <p className="text-muted-foreground text-sm">
-          Palavras-chave sugeridas pela IA, com estimativa de volume de busca e
-          concorrência — não são números reais do Google, servem como direção, não como dado
-          exato.
+          São termos que pessoas já buscam no Google relacionados ao seu negócio — quanto mais
+          buscas por mês, mais gente procurando por isso, e concorrência baixa significa mais
+          fácil aparecer bem nos resultados sem depender de anúncio pago. Vale usar essas
+          palavras no conteúdo do seu site ou blog para atrair esse público. A IA sugeriu essas
+          palavras-chave com estimativa de volume de busca e concorrência — não são números
+          reais do Google, servem como direção, não como dado exato.
           {gapCount > 0
             ? ` ${gapCount} ${gapCount === 1 ? "delas ainda não aparece" : "delas ainda não aparecem"} no perfil da sua empresa — oportunidades de nicho a explorar.`
             : ""}

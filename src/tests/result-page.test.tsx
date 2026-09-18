@@ -45,6 +45,12 @@ function validPlan(overrides: Record<string, unknown> = {}) {
         {
           title: "Formalizar critério MQL",
           objective: "Objetivo",
+          actionType: "sales_process",
+          details: ["Detalhe 1 da ação", "Detalhe 2 da ação"],
+          blogBrief: null,
+          richMaterialBrief: null,
+          paidTrafficBrief: null,
+          cadenceBrief: null,
           suggestedOwner: "Marketing",
           deadline: "Semana 2",
           indicator: "Indicador",
@@ -56,6 +62,12 @@ function validPlan(overrides: Record<string, unknown> = {}) {
         {
           title: "Ação fase 2",
           objective: "Objetivo",
+          actionType: "content_blog",
+          details: ["Detalhe 1 da ação", "Detalhe 2 da ação"],
+          blogBrief: null,
+          richMaterialBrief: null,
+          paidTrafficBrief: null,
+          cadenceBrief: null,
           suggestedOwner: "Vendas",
           deadline: "Semana 6",
           indicator: "Indicador",
@@ -67,6 +79,12 @@ function validPlan(overrides: Record<string, unknown> = {}) {
         {
           title: "Ação fase 3",
           objective: "Objetivo",
+          actionType: "paid_traffic",
+          details: ["Detalhe 1 da ação", "Detalhe 2 da ação"],
+          blogBrief: null,
+          richMaterialBrief: null,
+          paidTrafficBrief: null,
+          cadenceBrief: null,
           suggestedOwner: "Vendas",
           deadline: "Semana 10",
           indicator: "Indicador",
@@ -158,25 +176,29 @@ describe("ResultPage — relatório completo", () => {
     render(<ResultPage state={completedState({ plan: validPlan({ executiveDiagnosis: longText }) })} />);
     expect(screen.getByText(longText)).toBeInTheDocument();
   });
-});
 
-describe("ResultPage — Inbound Marketing condicional", () => {
-  it("Demanda: mostra a seção de Inbound Marketing quando o gargalo principal é demanda", () => {
-    render(<ResultPage state={completedState({ primaryBottleneck: "demand" })} />);
-    expect(screen.getByText("Jornada de Inbound Marketing")).toBeInTheDocument();
-    // "Atrair" aparece duas vezes de propósito (no funil visual e na
-    // lista lateral com a descrição da etapa) — ver inbound-marketing-section.tsx.
-    expect(screen.getAllByText("Atrair").length).toBeGreaterThan(0);
+  it("deixa claro que os números do funil vêm das respostas da pessoa, nunca de uma média de mercado", () => {
+    render(<ResultPage state={completedState()} />);
+    expect(screen.getByText(/nunca de uma média de mercado/)).toBeInTheDocument();
   });
 
-  it("Demanda como risco secundário também mostra a seção", () => {
-    render(<ResultPage state={completedState({ primaryBottleneck: "conversion", secondaryRisk: "demand" })} />);
-    expect(screen.getByText("Jornada de Inbound Marketing")).toBeInTheDocument();
+  it("explica que 'Necessário' menor que 'Atual' significa conversão eficiente, não uma etapa não calculável", () => {
+    render(
+      <ResultPage
+        state={completedState({
+          funnelStages: [
+            { ...CALCULABLE_STAGE, current: 100, required: 20, gap: 0 },
+            UNCALCULABLE_STAGE,
+          ],
+        })}
+      />,
+    );
+    expect(screen.getByText(/o gargalo real está em outra etapa do funil/)).toBeInTheDocument();
   });
 
-  it("Conversão: NÃO mostra a seção de Inbound Marketing quando nem o gargalo nem o risco são demanda", () => {
-    render(<ResultPage state={completedState({ primaryBottleneck: "conversion", secondaryRisk: null })} />);
-    expect(screen.queryByText("Jornada de Inbound Marketing")).not.toBeInTheDocument();
+  it("NÃO mostra a explicação de 'necessário menor' quando nenhuma etapa está nessa situação", () => {
+    render(<ResultPage state={completedState()} />);
+    expect(screen.queryByText(/o gargalo real está em outra etapa do funil/)).not.toBeInTheDocument();
   });
 });
 

@@ -32,6 +32,12 @@ function validPlan(overrides: Partial<CommercialPlan> = {}): CommercialPlan {
         {
           title: "Formalizar critério de qualificação (MQL)",
           objective: "Definir e documentar o critério com o time.",
+          actionType: "sales_process",
+          details: ["Detalhe 1 da ação", "Detalhe 2 da ação"],
+          blogBrief: null,
+          richMaterialBrief: null,
+          paidTrafficBrief: null,
+          cadenceBrief: null,
           suggestedOwner: "Marketing",
           deadline: "Semana 2",
           indicator: "% de leads qualificados",
@@ -43,6 +49,18 @@ function validPlan(overrides: Partial<CommercialPlan> = {}): CommercialPlan {
         {
           title: "Ação da fase 2",
           objective: "Objetivo da fase 2.",
+          actionType: "content_blog",
+          details: ["Detalhe 1 da ação", "Detalhe 2 da ação"],
+          blogBrief: {
+            subtitle: "Gancho do post para atrair quem busca esse tema.",
+            sections: [
+              { heading: "Por que isso importa agora?", body: "Parágrafo de desenvolvimento do primeiro H2." },
+              { heading: "Como resolver na prática?", body: "Parágrafo de desenvolvimento do segundo H2." },
+            ],
+          },
+          richMaterialBrief: null,
+          paidTrafficBrief: null,
+          cadenceBrief: null,
           suggestedOwner: "Vendas",
           deadline: "Semana 6",
           indicator: "Indicador da fase 2",
@@ -54,6 +72,15 @@ function validPlan(overrides: Partial<CommercialPlan> = {}): CommercialPlan {
         {
           title: "Ação da fase 3",
           objective: "Objetivo da fase 3.",
+          actionType: "paid_traffic",
+          details: ["Detalhe 1 da ação", "Detalhe 2 da ação"],
+          blogBrief: null,
+          richMaterialBrief: null,
+          paidTrafficBrief: {
+            headline: "Título do criativo do anúncio",
+            subheadline: "Linha de apoio com a dor específica do público-alvo.",
+          },
+          cadenceBrief: null,
           suggestedOwner: "Vendas",
           deadline: "Semana 10",
           indicator: "Indicador da fase 3",
@@ -105,7 +132,6 @@ function baseProps(overrides: Record<string, unknown> = {}) {
     plan: validPlan(),
     funnelStages: [CALCULABLE_STAGE, UNCALCULABLE_STAGE],
     primaryBottleneck: "conversion" as const,
-    secondaryRisk: null,
     dataQualityPercentage: 60,
     confidence: "medium" as const,
     seoOpportunities: [],
@@ -122,21 +148,14 @@ async function renderAndAssertValidPdf(props: ReturnType<typeof baseProps>) {
 }
 
 describe("CommercialPlanDocument — renderização", () => {
-  it("renderiza um PDF válido para um plano normal (gargalo de conversão, sem Inbound)", async () => {
+  it("renderiza um PDF válido para um plano normal (gargalo de conversão)", async () => {
     await renderAndAssertValidPdf(baseProps());
   });
 
-  it("renderiza um PDF válido para um plano com Inbound Marketing (gargalo de demanda)", async () => {
-    const buffer = await renderAndAssertValidPdf(
+  it("renderiza um PDF válido para um plano com gargalo de demanda", async () => {
+    await renderAndAssertValidPdf(
       baseProps({ primaryBottleneck: "demand", plan: validPlan({ primaryBottleneck: "demand" }) }),
     );
-    // heurística simples: o PDF deve ser maior que a versão sem a seção de Inbound
-    const withoutInbound = await renderToBuffer(<CommercialPlanDocument {...baseProps()} />);
-    expect(buffer.length).not.toBe(withoutInbound.length);
-  });
-
-  it("renderiza sem quebrar quando o risco secundário (não o principal) é demanda", async () => {
-    await renderAndAssertValidPdf(baseProps({ primaryBottleneck: "processes", secondaryRisk: "demand" }));
   });
 
   it("renderiza a seção de Oportunidades de SEO, incluindo palavras-chave de nicho não exploradas", async () => {
@@ -201,6 +220,62 @@ describe("CommercialPlanDocument — renderização", () => {
         plan: validPlan({
           evidence: [{ summary: "Única evidência.", source: "confirmed_data" }],
           rootCause: { description: "Causa única.", evidence: [{ summary: "x", source: "inference" }] },
+        }),
+      }),
+    );
+  });
+
+  it("renderiza o brief de material rico (seções + ideia de capa) sem lançar erro", async () => {
+    await renderAndAssertValidPdf(
+      baseProps({
+        plan: validPlan({
+          plan90Days: {
+            ...validPlan().plan90Days,
+            days31to60: [
+              {
+                ...validPlan().plan90Days.days31to60[0],
+                actionType: "rich_material",
+                blogBrief: null,
+                richMaterialBrief: {
+                  format: "quiz interativo",
+                  subtitle: "Proposta de valor do material.",
+                  sections: [
+                    { title: "Pergunta 1", description: "O que a pessoa encontra aqui." },
+                    { title: "Pergunta 2", description: "O que a pessoa encontra aqui." },
+                    { title: "Pergunta 3", description: "O que a pessoa encontra aqui." },
+                  ],
+                  coverIdea: "Capa azul, minimalista, com um ícone de funil.",
+                },
+                paidTrafficBrief: null,
+              },
+            ],
+          },
+        }),
+      }),
+    );
+  });
+
+  it("renderiza o brief de cadência (toques com canal + copy) sem lançar erro", async () => {
+    await renderAndAssertValidPdf(
+      baseProps({
+        plan: validPlan({
+          plan90Days: {
+            ...validPlan().plan90Days,
+            days61to90: [
+              {
+                ...validPlan().plan90Days.days61to90[0],
+                actionType: "crm_pipeline",
+                paidTrafficBrief: null,
+                cadenceBrief: {
+                  touchpoints: [
+                    { moment: "D+2", channel: "E-mail", copy: "Oi [Nome], só reforçando a proposta que te enviei." },
+                    { moment: "D+5", channel: "WhatsApp", copy: "Ficou alguma dúvida sobre a proposta?" },
+                    { moment: "D+10", channel: "Ligação", copy: "Última tentativa antes de encerrar o contato." },
+                  ],
+                },
+              },
+            ],
+          },
         }),
       }),
     );

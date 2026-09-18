@@ -50,6 +50,7 @@ export function extractCommercialMetrics(
     // perguntar a mesma coisa duas vezes.
     currentMonthlySales: numberAnswer(answers, "U5"),
     salesPerMonth: numberAnswer(answers, "U5"),
+    currentMonthlyRevenue: numberAnswer(answers, "U10"),
     leadsPerMonth: numberAnswer(answers, "U6"),
     opportunitiesPerMonth: numberAnswer(answers, "U7"),
     meetingsPerMonth: numberAnswer(answers, "U8"),

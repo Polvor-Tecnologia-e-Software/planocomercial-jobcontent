@@ -22,12 +22,27 @@ export function FunnelLeakMap({ stages }: FunnelLeakMapProps) {
         ).key
       : null;
 
+  // Feedback real de teste: sem essa explicação, "Necessário" menor que
+  // "Atual" numa etapa parece um erro ou uma sugestão perigosa ("gere
+  // menos leads"). É matematicamente correto (a conversão naquela etapa já
+  // é boa o suficiente — o gargalo real está em outro lugar), mas só faz
+  // sentido com a explicação ao lado. Só mostra a segunda frase quando
+  // pelo menos uma etapa calculável de fato está nessa situação.
+  const hasStageAheadOfNeed = calculableStages.some(
+    (stage) => stage.current !== null && stage.required !== null && stage.required < stage.current,
+  );
+
   return (
     <section className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
         <h2 className="text-brand-navy-900 text-2xl font-extrabold">Mapa de gargalos comerciais</h2>
         <p className="text-muted-foreground text-sm">
-          Onde a operação comercial perde volume entre um estágio e o próximo.
+          Onde a operação comercial perde volume entre um estágio e o próximo. Os números de
+          &quot;Necessário&quot; vêm só das respostas que você deu neste diagnóstico — nunca de uma
+          média de mercado.
+          {hasStageAheadOfNeed
+            ? " Quando “Necessário” aparece menor que “Atual” numa etapa, isso significa que sua conversão ali já é suficiente para bater a meta — o gargalo real está em outra etapa do funil, não é uma sugestão para reduzir esse número."
+            : ""}
         </p>
       </div>
 

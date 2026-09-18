@@ -42,10 +42,12 @@ const COMPLETE_D5_ANSWERS = [
   { question_key: "U3", answer_value: 2 },
   { question_key: "U4", answer_value: 100_000 },
   { question_key: "U5", answer_value: 12 },
+  { question_key: "U10", answer_value: 60_000 },
   { question_key: "U6", answer_value: 50 },
   { question_key: "U7", answer_value: 20 },
   { question_key: "U8", answer_value: 15 },
   { question_key: "U9", answer_value: 10 },
+  { question_key: "U11", answer_value: "usa_estruturado" },
   { question_key: "D5_Q1", answer_value: "sim_atualizado" },
   { question_key: "D5_Q2", answer_value: "qualquer_um" },
 ];

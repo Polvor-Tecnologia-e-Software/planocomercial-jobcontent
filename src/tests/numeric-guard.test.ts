@@ -24,6 +24,12 @@ function basePlan(overrides: Partial<CommercialPlan> = {}): CommercialPlan {
         {
           title: "Ação",
           objective: "Objetivo",
+          actionType: "sales_process",
+          details: ["Detalhe 1 da ação", "Detalhe 2 da ação"],
+          blogBrief: null,
+          richMaterialBrief: null,
+          paidTrafficBrief: null,
+          cadenceBrief: null,
           suggestedOwner: "Vendas",
           deadline: "Semana 1",
           indicator: "Indicador",
@@ -35,6 +41,12 @@ function basePlan(overrides: Partial<CommercialPlan> = {}): CommercialPlan {
         {
           title: "Ação",
           objective: "Objetivo",
+          actionType: "sales_process",
+          details: ["Detalhe 1 da ação", "Detalhe 2 da ação"],
+          blogBrief: null,
+          richMaterialBrief: null,
+          paidTrafficBrief: null,
+          cadenceBrief: null,
           suggestedOwner: "Vendas",
           deadline: "Semana 5",
           indicator: "Indicador",
@@ -46,6 +58,12 @@ function basePlan(overrides: Partial<CommercialPlan> = {}): CommercialPlan {
         {
           title: "Ação",
           objective: "Objetivo",
+          actionType: "sales_process",
+          details: ["Detalhe 1 da ação", "Detalhe 2 da ação"],
+          blogBrief: null,
+          richMaterialBrief: null,
+          paidTrafficBrief: null,
+          cadenceBrief: null,
           suggestedOwner: "Vendas",
           deadline: "Semana 9",
           indicator: "Indicador",
@@ -80,6 +98,14 @@ describe("findUngroundedNumbers", () => {
     expect(findUngroundedNumbers(plan, CONTEXT_WITH_20_PERCENT)).toEqual([]);
   });
 
+  it("aceita a meta citada com separador de milhar pt-BR (ex.: \"R$ 300.000\") quando o contexto tem 300000 puro — bug real: IA escreveu a própria meta e foi rejeitada", () => {
+    const contextWithGoal = JSON.stringify({ metrics: { monthlyGoal: 300000 } });
+    const plan = basePlan({
+      goalGapInterpretation: "O gap para a meta de R$ 300.000 está concentrado na conversão.",
+    });
+    expect(findUngroundedNumbers(plan, contextWithGoal)).toEqual([]);
+  });
+
   it("rejeita um número citado que não existe em lugar nenhum do contexto (número inventado)", () => {
     const plan = basePlan({
       goalGapInterpretation: "A conversão está em 47%, bem abaixo do esperado.",
@@ -95,6 +121,69 @@ describe("findUngroundedNumbers", () => {
     });
     const findings = findUngroundedNumbers(plan, CONTEXT_WITH_20_PERCENT);
     expect(findings.some((f) => f.field === "indicators[0].currentValue" && f.value === "35")).toBe(true);
+  });
+
+  it("não varre blogBrief/richMaterialBrief/paidTrafficBrief (igual a details) — números criativos de copy não travam a validação", () => {
+    const plan = basePlan({
+      plan90Days: {
+        ...basePlan().plan90Days,
+        days1to30: [
+          {
+            title: "Post de blog",
+            objective: "Objetivo",
+            actionType: "content_blog",
+            details: ["5 sinais de dependência de indicação"],
+            blogBrief: {
+              subtitle: "Um gancho qualquer com 99% citado sem vir do contexto.",
+              sections: [
+                { heading: "H2 com número 47 solto", body: "Corpo com 123 solto, também não vindo do contexto." },
+                { heading: "Segunda seção", body: "Mais texto de apoio." },
+              ],
+            },
+            richMaterialBrief: null,
+            paidTrafficBrief: null,
+            cadenceBrief: null,
+            suggestedOwner: "Marketing",
+            deadline: "Semana 1",
+            indicator: "Indicador",
+            completionCriteria: "Critério",
+            relatedPriority: 1,
+          },
+        ],
+      },
+    });
+    expect(findUngroundedNumbers(plan, "{}")).toEqual([]);
+  });
+
+  it("não varre cadenceBrief (igual a details) — números soltos na copy da cadência não travam a validação", () => {
+    const plan = basePlan({
+      plan90Days: {
+        ...basePlan().plan90Days,
+        days1to30: [
+          {
+            title: "Cadência de follow-up",
+            objective: "Objetivo",
+            actionType: "crm_pipeline",
+            details: ["Follow-up em D+2, D+5 e D+10"],
+            blogBrief: null,
+            richMaterialBrief: null,
+            paidTrafficBrief: null,
+            cadenceBrief: {
+              touchpoints: [
+                { moment: "D+2", channel: "E-mail", copy: "Já são 47 dias sem resposta? Vamos conversar." },
+                { moment: "D+5", channel: "WhatsApp", copy: "99% dos clientes fecham depois desse toque." },
+              ],
+            },
+            suggestedOwner: "Vendas",
+            deadline: "Semana 1",
+            indicator: "Indicador",
+            completionCriteria: "Critério",
+            relatedPriority: 1,
+          },
+        ],
+      },
+    });
+    expect(findUngroundedNumbers(plan, "{}")).toEqual([]);
   });
 
   it("nunca acusa números estruturais do formato (1-3 prioridades, fases de 30/60/90 dias)", () => {

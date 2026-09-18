@@ -88,6 +88,12 @@ function validPlan(overrides: Record<string, unknown> = {}) {
         {
           title: "Ação",
           objective: "Objetivo",
+          actionType: "sales_process",
+          details: ["Detalhe 1 da ação", "Detalhe 2 da ação"],
+          blogBrief: null,
+          richMaterialBrief: null,
+          paidTrafficBrief: null,
+          cadenceBrief: null,
           suggestedOwner: "Vendas",
           deadline: "Semana 1",
           indicator: "Indicador",
@@ -99,6 +105,12 @@ function validPlan(overrides: Record<string, unknown> = {}) {
         {
           title: "Ação",
           objective: "Objetivo",
+          actionType: "sales_process",
+          details: ["Detalhe 1 da ação", "Detalhe 2 da ação"],
+          blogBrief: null,
+          richMaterialBrief: null,
+          paidTrafficBrief: null,
+          cadenceBrief: null,
           suggestedOwner: "Vendas",
           deadline: "Semana 5",
           indicator: "Indicador",
@@ -110,6 +122,12 @@ function validPlan(overrides: Record<string, unknown> = {}) {
         {
           title: "Ação",
           objective: "Objetivo",
+          actionType: "sales_process",
+          details: ["Detalhe 1 da ação", "Detalhe 2 da ação"],
+          blogBrief: null,
+          richMaterialBrief: null,
+          paidTrafficBrief: null,
+          cadenceBrief: null,
           suggestedOwner: "Vendas",
           deadline: "Semana 9",
           indicator: "Indicador",
@@ -219,7 +237,7 @@ describe("generateCommercialPlan — falhas nunca perdem o diagnóstico", () => 
     buildCommercialPlanContext.mockResolvedValue(baseContext());
   });
 
-  it("IA retorna JSON inválido -> status failed, motivo invalid_output, relatório marcado como failed", async () => {
+  it("IA retorna JSON inválido -> status failed, motivo invalid_output, relatório marcado como failed com o detalhe do erro", async () => {
     generateCommercialPlanContent.mockRejectedValue(
       new AiResponseValidationError("schema não bate", {}),
     );
@@ -227,7 +245,14 @@ describe("generateCommercialPlan — falhas nunca perdem o diagnóstico", () => 
     const result = await generateCommercialPlan("diagnostic-1");
 
     expect(result).toEqual({ status: "failed", reason: "invalid_output", reportId: "report-1" });
-    expect(updateAiReportStatus).toHaveBeenCalledWith("report-1", "failed");
+    // last_error agora leva o detalhe real do erro (nome + mensagem, nunca
+    // o objeto bruto) — sem isso, depurar uma falha exigia achar a linha
+    // certa no terminal do servidor.
+    expect(updateAiReportStatus).toHaveBeenCalledWith(
+      "report-1",
+      "failed",
+      expect.objectContaining({ last_error: expect.stringContaining("AiResponseValidationError: schema não bate") }),
+    );
   });
 
   it("timeout/indisponibilidade -> status failed, motivo transport_error", async () => {
@@ -240,7 +265,7 @@ describe("generateCommercialPlan — falhas nunca perdem o diagnóstico", () => 
     expect(result).toEqual({ status: "failed", reason: "transport_error", reportId: "report-1" });
   });
 
-  it("número não rastreável ao contexto -> rejeitado, status failed, motivo invalid_output", async () => {
+  it("número não rastreável ao contexto -> rejeitado, status failed, motivo invalid_output, com o campo/valor no last_error", async () => {
     generateCommercialPlanContent.mockResolvedValue({
       plan: validPlan({ goalGapInterpretation: "A conversão está travada em exatos 47% hoje." }),
       inputTokens: 400,
@@ -252,6 +277,13 @@ describe("generateCommercialPlan — falhas nunca perdem o diagnóstico", () => 
     const result = await generateCommercialPlan("diagnostic-1");
 
     expect(result).toEqual({ status: "failed", reason: "invalid_output", reportId: "report-1" });
+    expect(updateAiReportStatus).toHaveBeenCalledWith(
+      "report-1",
+      "failed",
+      expect.objectContaining({
+        last_error: expect.stringContaining('goalGapInterpretation="47"'),
+      }),
+    );
   });
 
   it("respeita o limite de tentativas por diagnóstico (evita custo ilimitado de retry)", async () => {
@@ -308,5 +340,107 @@ describe("generateCommercialPlan — cache", () => {
 
     const result = await generateCommercialPlan("diagnostic-1");
     expect(result.status).toBe("generated");
+  });
+});
+
+describe("generateCommercialPlan — correção determinística dos indicadores do funil", () => {
+  beforeEach(() => {
+    getDiagnosticById.mockResolvedValue(makeDiagnostic());
+    buildCommercialPlanContext.mockResolvedValue(
+      baseContext({
+        funnelAnalysis: {
+          requiredFunnel: { opportunities: 2, customers: 1 },
+          gaps: {},
+          conversionRates: {},
+          missingData: [],
+        },
+      }),
+    );
+  });
+
+  it("caso real: corrige 'Oportunidades geradas por mês' quando a IA cita o requiredFunnel de outro estágio", async () => {
+    generateCommercialPlanContent.mockResolvedValue({
+      plan: validPlan({
+        indicators: [
+          // A IA citou 5 (na verdade requiredFunnel.meetings de outro
+          // estágio) em vez do valor real de opportunities, que é 2.
+          { name: "Oportunidades geradas por mês", currentValue: "4", targetValue: "5", frequency: "monthly" },
+        ],
+      }),
+      inputTokens: 400,
+      outputTokens: 700,
+      model: "modelo-de-teste",
+      latencyMs: 900,
+    });
+
+    const result = await generateCommercialPlan("diagnostic-1");
+
+    expect(result.status).toBe("generated");
+    if (result.status === "generated") {
+      expect(result.plan.indicators[0]).toEqual(
+        expect.objectContaining({ targetValue: "2", currentValue: "4" }),
+      );
+    }
+  });
+
+  it("caso real: corrige 'Número de novos clientes fechados' (a IA citou 3, valor real é 1)", async () => {
+    generateCommercialPlanContent.mockResolvedValue({
+      plan: validPlan({
+        indicators: [
+          { name: "Número de novos clientes fechados", currentValue: "2", targetValue: "3", frequency: "monthly" },
+        ],
+      }),
+      inputTokens: 400,
+      outputTokens: 700,
+      model: "modelo-de-teste",
+      latencyMs: 900,
+    });
+
+    const result = await generateCommercialPlan("diagnostic-1");
+
+    expect(result.status).toBe("generated");
+    if (result.status === "generated") {
+      expect(result.plan.indicators[0].targetValue).toBe("1");
+    }
+  });
+
+  it("nunca corrige um indicador sem relação com o funil (ex.: satisfação do cliente)", async () => {
+    generateCommercialPlanContent.mockResolvedValue({
+      plan: validPlan({
+        indicators: [
+          { name: "Taxa de satisfação do cliente", currentValue: "80%", targetValue: "90%", frequency: "monthly" },
+        ],
+      }),
+      inputTokens: 400,
+      outputTokens: 700,
+      model: "modelo-de-teste",
+      latencyMs: 900,
+    });
+
+    const result = await generateCommercialPlan("diagnostic-1");
+
+    expect(result.status).toBe("generated");
+    if (result.status === "generated") {
+      expect(result.plan.indicators[0].targetValue).toBe("90%");
+    }
+  });
+
+  it("aplica a mesma correção mesmo quando o plano vem do cache (autocura de um cache antigo já errado)", async () => {
+    findCachedReport.mockResolvedValue({
+      id: "report-cached",
+      response_json: validPlan({
+        indicators: [
+          { name: "Oportunidades geradas por mês", currentValue: "4", targetValue: "5", frequency: "monthly" },
+        ],
+      }),
+    });
+
+    const result = await generateCommercialPlan("diagnostic-1");
+
+    expect(result.status).toBe("cached");
+    expect(generateCommercialPlanContent).not.toHaveBeenCalled();
+    if (result.status === "cached") {
+      expect(result.plan.indicators[0].targetValue).toBe("2");
+    }
   });
 });

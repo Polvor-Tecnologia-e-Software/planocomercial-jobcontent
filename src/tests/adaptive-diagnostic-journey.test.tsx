@@ -47,7 +47,11 @@ describe("AdaptiveDiagnosticJourney", () => {
       <AdaptiveDiagnosticJourney diagnosticId="diagnostic-1" challenge="D1" initialAnswers={[]} />,
     );
 
-    expect(screen.getByText("Qual é o ticket médio de uma venda fechada?")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Qual é o ticket médio de uma venda fechada? (o valor de UMA venda — não o faturamento do mês nem do ano)",
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Voltar" })).toBeDisabled();
   });
 
@@ -78,7 +82,9 @@ describe("AdaptiveDiagnosticJourney", () => {
       <AdaptiveDiagnosticJourney diagnosticId="diagnostic-1" challenge="D1" initialAnswers={[]} />,
     );
 
-    const currencyField = screen.getByRole("textbox", { name: "Qual é o ticket médio de uma venda fechada?" });
+    const currencyField = screen.getByRole("textbox", {
+      name: "Qual é o ticket médio de uma venda fechada? (o valor de UMA venda — não o faturamento do mês nem do ano)",
+    });
     await user.type(currencyField, "5000");
 
     expect(currencyField).toHaveValue(BRL_FORMATTER.format(5000));
@@ -112,10 +118,12 @@ describe("AdaptiveDiagnosticJourney", () => {
           fakeAnswerRow("U3", 2),
           fakeAnswerRow("U4", 100_000),
           fakeAnswerRow("U5", 12),
+          fakeAnswerRow("U10", 60_000),
           fakeAnswerRow("U6", 50),
           fakeAnswerRow("U7", 20),
           fakeAnswerRow("U8", 15),
           fakeAnswerRow("U9", 10),
+          fakeAnswerRow("U11", "usa_estruturado"),
         ]}
       />,
     );
@@ -141,11 +149,20 @@ describe("AdaptiveDiagnosticJourney", () => {
       <AdaptiveDiagnosticJourney diagnosticId="diagnostic-1" challenge="D1" initialAnswers={[]} />,
     );
 
-    await user.type(screen.getByRole("textbox", { name: "Qual é o ticket médio de uma venda fechada?" }), "1");
+    await user.type(
+      screen.getByRole("textbox", {
+        name: "Qual é o ticket médio de uma venda fechada? (o valor de UMA venda — não o faturamento do mês nem do ano)",
+      }),
+      "1",
+    );
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Essa resposta não é válida");
-    expect(screen.getByText("Qual é o ticket médio de uma venda fechada?")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Qual é o ticket médio de uma venda fechada? (o valor de UMA venda — não o faturamento do mês nem do ano)",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("volta para a pergunta anterior e recarrega a resposta já dada para edição", async () => {
@@ -161,9 +178,15 @@ describe("AdaptiveDiagnosticJourney", () => {
 
     await user.click(screen.getByRole("button", { name: "Voltar" }));
 
-    expect(screen.getByText("Qual é o ticket médio de uma venda fechada?")).toBeInTheDocument();
     expect(
-      screen.getByRole("textbox", { name: "Qual é o ticket médio de uma venda fechada?" }),
+      screen.getByText(
+        "Qual é o ticket médio de uma venda fechada? (o valor de UMA venda — não o faturamento do mês nem do ano)",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", {
+        name: "Qual é o ticket médio de uma venda fechada? (o valor de UMA venda — não o faturamento do mês nem do ano)",
+      }),
     ).toHaveValue(BRL_FORMATTER.format(1000));
   });
 
@@ -186,10 +209,12 @@ describe("AdaptiveDiagnosticJourney", () => {
           fakeAnswerRow("U3", 2),
           fakeAnswerRow("U4", 100_000),
           fakeAnswerRow("U5", 12),
+          fakeAnswerRow("U10", 60_000),
           fakeAnswerRow("U6", 50),
           fakeAnswerRow("U7", 20),
           fakeAnswerRow("U8", 15),
           fakeAnswerRow("U9", 10),
+          fakeAnswerRow("U11", "usa_estruturado"),
           fakeAnswerRow("D5_Q1", "sim_atualizado"),
         ]}
       />,

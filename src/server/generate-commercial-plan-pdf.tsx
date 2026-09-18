@@ -81,7 +81,6 @@ export async function generateCommercialPlanPdf(
       plan: result.plan,
       funnelStages: result.funnelStages,
       primaryBottleneck: result.primaryBottleneck,
-      secondaryRisk: result.secondaryRisk,
       dataQualityPercentage: result.dataQualityPercentage,
       confidence: result.confidence,
       seoOpportunities: result.seoOpportunities,
@@ -131,7 +130,6 @@ export async function generateCommercialPlanPdf(
         plan={result.plan}
         funnelStages={result.funnelStages}
         primaryBottleneck={result.primaryBottleneck}
-        secondaryRisk={result.secondaryRisk}
         dataQualityPercentage={result.dataQualityPercentage}
         confidence={result.confidence}
         seoOpportunities={result.seoOpportunities}

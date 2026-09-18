@@ -46,6 +46,18 @@ function isValidWebsite(value: string): boolean {
 }
 
 /**
+ * Valida um telefone brasileiro de forma tolerante: aceita com ou sem
+ * máscara — só confere que sobram 10 ou 11 dígitos depois de remover tudo
+ * que não é número (DDD + fixo de 8 dígitos, ou DDD + celular de 9
+ * dígitos). A máscara em si é aplicada no cliente (ver capture-form.tsx);
+ * aqui só validamos o valor final recebido.
+ */
+function isValidBrazilianPhone(value: string): boolean {
+  const digits = value.replace(/\D/g, "");
+  return digits.length === 10 || digits.length === 11;
+}
+
+/**
  * Divide o texto do campo de palavras-chave em uma lista: aceita
  * separação por vírgula ou por linha, ignora entradas vazias e remove
  * duplicatas (sem diferenciar maiúsculas/minúsculas).
@@ -111,6 +123,21 @@ export const startDiagnosticSchema = z.object({
         (value) => !isFreeEmailDomain(value),
         "Informe um e-mail corporativo — não aceitamos e-mails pessoais (Gmail, Yahoo, Hotmail, etc.).",
       ),
+  ),
+
+  // Opcional — nem toda pessoa quer compartilhar telefone. Quando
+  // informado, precisa ter DDD + número (10 ou 11 dígitos). Enviado ao
+  // RD Station como mobile_phone (ver src/server/send-rd-station-conversion.ts).
+  phone: z.preprocess(
+    (value) => emptyToUndefined(toStringOrEmpty(value)),
+    z
+      .string()
+      .max(20, "Esse telefone está muito longo.")
+      .refine(
+        isValidBrazilianPhone,
+        "Informe um telefone válido com DDD (ex.: (11) 98765-4321) ou deixe em branco.",
+      )
+      .optional(),
   ),
 
   // Palavras-chave que resumem o negócio (5 a 10) — usadas pela IA como

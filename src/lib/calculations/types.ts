@@ -12,6 +12,8 @@ export type CommercialMetrics = {
   monthlyGoal: number | null; // U4
   /** U5 — mesma resposta também alimenta salesPerMonth (mesmo dado real, usado em dois cálculos diferentes). */
   currentMonthlySales: number | null;
+  /** U10 — opcional. Quando presente, a engenharia reversa desconta este valor da meta antes de calcular clientes necessários (ver reverse-engineering.ts), em vez de tratar a meta como se a empresa partisse de R$0. */
+  currentMonthlyRevenue: number | null;
   leadsPerMonth: number | null; // U6
   opportunitiesPerMonth: number | null; // U7
   meetingsPerMonth: number | null; // U8

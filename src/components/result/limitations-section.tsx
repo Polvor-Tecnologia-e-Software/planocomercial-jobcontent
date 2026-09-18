@@ -11,6 +11,11 @@ export function LimitationsSection({ limitations }: LimitationsSectionProps) {
       <h2 className="text-brand-navy-900 text-[15px] font-extrabold">
         O que considerar ao interpretar este diagnóstico
       </h2>
+      <p className="text-[13px] text-[#45505f]">
+        Estes são pontos da sua operação comercial, identificados a partir das suas próprias
+        respostas, que podem limitar o resultado do plano se não forem endereçados — vale
+        levar em conta ao priorizar as ações dos próximos 90 dias.
+      </p>
       <ul className="flex flex-col gap-1.5 text-[13.5px] text-[#45505f]">
         {limitations.map((limitation) => (
           <li key={limitation}>• {limitation}</li>
