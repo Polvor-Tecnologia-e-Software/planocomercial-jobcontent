@@ -39,19 +39,17 @@ describe("buildCommercialPlanSystemPrompt", () => {
     expect(prompt).not.toContain("Inbound Marketing");
   });
 
-  it("exige pelo menos 1 ação paid_traffic quando o gargalo (principal ou secundário) é demanda, sem eliminar as demais sugestões — pedido explícito", () => {
-    const primaryDemand = buildCommercialPlanSystemPrompt("demand", null);
-    expect(primaryDemand).toMatch(/PELO MENOS 1 ação com actionType "paid_traffic"/);
-    expect(primaryDemand).toMatch(/ADICIONAL às outras ações já exigidas/);
-    expect(primaryDemand).toMatch(/nunca substitua content_blog\/rich_material\/sales_process/);
-
-    const secondaryDemand = buildCommercialPlanSystemPrompt("conversion", "demand");
-    expect(secondaryDemand).toMatch(/PELO MENOS 1 ação com actionType "paid_traffic"/);
-  });
-
-  it("NÃO exige paid_traffic obrigatório quando o gargalo não envolve demanda", () => {
-    const prompt = buildCommercialPlanSystemPrompt("processes", "management");
-    expect(prompt).not.toMatch(/PELO MENOS 1 ação com actionType "paid_traffic"/);
+  it("exige EXATAMENTE 1 ação paid_traffic em TODA fase, pra qualquer gargalo — pedido explícito: 'inclua sempre sugestão de anúncio de tráfego pago, seja qual for o objetivo'", () => {
+    for (const [primary, secondary] of [
+      ["demand", null],
+      ["processes", "management"],
+      [null, null],
+    ] as const) {
+      const prompt = buildCommercialPlanSystemPrompt(primary, secondary);
+      expect(prompt).toMatch(/EXATAMENTE 1 ação com actionType "paid_traffic"/);
+      expect(prompt).toMatch(/SEMPRE, mesmo quando o gargalo não é demanda/);
+      expect(prompt).toMatch(/ADITIVAS, uma nunca substitui a outra/);
+    }
   });
 
   it("contém a hierarquia de confiança e as proibições explícitas", () => {
@@ -115,24 +113,85 @@ describe("buildCommercialPlanSystemPrompt", () => {
     expect(prompt).toContain("calculadora");
   });
 
-  it("exige exatamente 2 content_blog e 1 rich_material no PLANO INTEIRO (não por fase), sempre — independente do gargalo (pedido explícito de cadência fixa de conteúdo)", () => {
+  it("exige cadência fixa de conteúdo e mídia POR FASE (2 content_blog + 1 rich_material + 1 landing_page + 1 paid_traffic em cada uma das 3 fases), sempre — independente do gargalo (pedido explícito de cadência previsível por mês)", () => {
     for (const [primary, secondary] of [
       ["demand", null],
       ["processes", "management"],
       [null, null],
     ] as const) {
       const prompt = buildCommercialPlanSystemPrompt(primary, secondary);
-      expect(prompt).toMatch(/PLANO DE 90 DIAS INTEIRO/);
-      expect(prompt).toMatch(/EXATAMENTE 2 ações com actionType "content_blog" no total/);
-      expect(prompt).toMatch(/EXATAMENTE 1 ação com actionType "rich_material" no total/);
+      expect(prompt).toMatch(/TODAS as 3 fases/);
+      expect(prompt).toMatch(/EXATAMENTE 2 ações com actionType "content_blog"/);
+      expect(prompt).toMatch(/EXATAMENTE 1 ação com actionType "rich_material"/);
+      expect(prompt).toMatch(/EXATAMENTE 1 ação com actionType "landing_page"/);
+      expect(prompt).toMatch(/EXATAMENTE 1 ação com actionType "paid_traffic"/);
     }
   });
 
-  it("instrui a incluir a copy real de cada toque de uma cadência comercial (crm_pipeline), não só a estrutura — pedido explícito", () => {
+  it("inclui o tipo landing_page na lista fechada de actionType, com a distinção de seo e rich_material", () => {
+    const prompt = buildCommercialPlanSystemPrompt(null, null);
+    expect(prompt).toContain("landing_page");
+    expect(prompt).toMatch(/diferente de "seo".*"rich_material"/);
+  });
+
+  it("instrui a landing_page do mês a promover prioritariamente o rich_material do mesmo mês", () => {
+    const prompt = buildCommercialPlanSystemPrompt(null, null);
+    expect(prompt).toContain("promover prioritariamente o rich_material do MESMO mês");
+  });
+
+  it("exige o preenchimento de landingPageBrief (name, url, hero, formFields, buttonText, sections) só quando actionType é landing_page", () => {
+    const prompt = buildCommercialPlanSystemPrompt(null, null);
+    expect(prompt).toContain("landingPageBrief");
+    expect(prompt).toMatch(/preencha SÓ landingPageBrief/);
+    expect(prompt).toContain("formFields");
+    expect(prompt).toContain("buttonText");
+  });
+
+  it("exige o preenchimento de paidTrafficBrief (primaryText, headline, subheadline, ctaText) e que o anúncio leve pra mesma oferta da landing_page do mês", () => {
+    const prompt = buildCommercialPlanSystemPrompt(null, null);
+    expect(prompt).toContain("paidTrafficBrief");
+    expect(prompt).toMatch(/preencha SÓ paidTrafficBrief/);
+    expect(prompt).toContain("primaryText");
+    expect(prompt).toContain("ctaText");
+    expect(prompt).toMatch(/MESMA oferta da landing_page do mês/);
+  });
+
+  it("traz um exemplo de paid_traffic pra cada um dos 6 desafios (D1-D6), não só demanda — pedido explícito", () => {
+    const prompt = buildCommercialPlanSystemPrompt(null, null);
+    for (const challenge of ["D1", "D2", "D3", "D4", "D5", "D6"]) {
+      const line = new RegExp(`- ${challenge} \\([^\\n]*paid_traffic`);
+      expect(prompt).toMatch(line);
+    }
+  });
+
+  it("exige goal e milestone pra cada uma das 3 fases em phaseSummaries, SEM NENHUM número em nenhum dos dois campos — bug real: a IA interpolou um valor 'razoável' entre o atual e a meta (ex.: 22 -> 35 -> 45) que nunca existiu no contexto", () => {
+    const prompt = buildCommercialPlanSystemPrompt(null, null);
+    expect(prompt).toContain("phaseSummaries");
+    expect(prompt).toMatch(/goal e um milestone PARA CADA UMA das 3 fases/);
+    expect(prompt).toMatch(/NUNCA cite nenhum número em goal nem em milestone/);
+    expect(prompt).toMatch(/progressão lógica \(estruturar -> ativar -> escalar\)/);
+  });
+
+  it("preenche strategicSummary com mediaBudgetPriority qualitativo (alta/media/baixa/teste), nunca um número ou porcentagem", () => {
+    const prompt = buildCommercialPlanSystemPrompt(null, null);
+    expect(prompt).toContain("strategicSummary");
+    expect(prompt).toContain("mediaBudgetPriority");
+    expect(prompt).toMatch(/NUNCA um número ou porcentagem/);
+  });
+
+  it("pede a cadência como ESTRUTURA de 5 dias (canais + objetivo por dia), nunca a copy — pedido explícito", () => {
     const prompt = buildCommercialPlanSystemPrompt(null, null);
     expect(prompt).toContain("cadenceBrief");
-    expect(prompt).toMatch(/touchpoints/);
-    expect(prompt).toMatch(/mensagem REAL daquele toque|a COPY real da/i);
+    expect(prompt).toMatch(/cadência de EXATAMENTE 5 dias/);
+    expect(prompt).toMatch(/NUNCA a copy das mensagens/);
+    expect(prompt).toMatch(/Dia 01 email \+ whatsapp, Dia 02 phone \+ whatsapp/);
+  });
+
+  it("pede o passo a passo de como montar o playbook nas ações sales_process — pedido explícito", () => {
+    const prompt = buildCommercialPlanSystemPrompt(null, null);
+    expect(prompt).toContain("playbookBrief");
+    expect(prompt).toMatch(/COMO a empresa monta o playbook/);
+    expect(prompt).toContain("adoptionTip");
   });
 
   it("traz um exemplo de conteúdo/ação prático para cada um dos 6 desafios (D1-D6), não só demanda", () => {

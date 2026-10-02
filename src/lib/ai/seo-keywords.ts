@@ -40,7 +40,14 @@ export async function generateSeoKeywordSuggestions(params: {
     schema: seoKeywordSuggestionsResultSchema,
     toolName: SEO_KEYWORDS_TOOL_NAME,
     toolDescription: SEO_KEYWORDS_TOOL_DESCRIPTION,
-    maxTokens: 800,
+    // Schema pequeno (no máximo 10 sugestões curtas), mas 800 foi
+    // dimensionado pro modelo anterior — AI_MODEL (.env.local) é global a
+    // todas as chamadas de IA do app, e o modelo atual ("gpt-4.1-mini") é
+    // mais verboso (mesmo motivo do bump em site-analysis.ts). Margem
+    // extra aqui evita o mesmo risco de truncar a tool call no meio do
+    // JSON mesmo com strict:true (strict garante a FORMA da saída, não
+    // que ela caiba no limite de tokens).
+    maxTokens: 1500,
     strict: true,
   });
 

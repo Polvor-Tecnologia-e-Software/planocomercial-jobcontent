@@ -35,6 +35,8 @@ export type CommercialPlanResultState =
       status: "completed";
       diagnosticId: string;
       companyName: string;
+      /** Domínio real informado pela empresa (já normalizado, sem protocolo/www) — null quando não informou site. Nunca um domínio inventado. */
+      companyWebsite: string | null;
       generatedAt: string;
       plan: CommercialPlan;
       funnelStages: ResultFunnelStage[];
@@ -186,6 +188,7 @@ export async function getCommercialPlanResult(diagnosticId: string): Promise<Com
     status: "completed",
     diagnosticId,
     companyName,
+    companyWebsite: company?.normalized_website ?? null,
     generatedAt: report.created_at,
     plan: validated.data,
     funnelStages: buildFunnelStages(

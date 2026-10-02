@@ -4,6 +4,7 @@ import {
   computeProgress,
   findNextQuestion,
   getApplicableRoute,
+  getProjectedRoute,
   toAnswerMap,
   type AdaptiveProgress,
 } from "@/lib/challenges/adaptive-engine";
@@ -49,7 +50,8 @@ export async function resumeDiagnosticJourney(
   const answers = await diagnosticAnswers.listAnswers(diagnosticId);
   const answerMap = toAnswerMap(answers);
   const route = getApplicableRoute(diagnostic.selected_challenge, answerMap);
-  const progress = computeProgress(route, answerMap);
+  // Mesma base de contagem da tela (rota prevista, total estável) — ver getProjectedRoute.
+  const progress = computeProgress(getProjectedRoute(diagnostic.selected_challenge, answerMap), answerMap);
   const isComplete = findNextQuestion(route, answerMap) === null;
 
   const needsHealing =

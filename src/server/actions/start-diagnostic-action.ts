@@ -11,7 +11,7 @@ import { startDiagnostic } from "@/server/start-diagnostic";
  * limitar abuso do formulário público, que dispara custo de IA e de crawl). */
 const RATE_LIMIT = { limit: 5, windowSeconds: 600 };
 
-type FieldName = "name" | "phone" | "companyName" | "website" | "email" | "keywords";
+type FieldName = "name" | "companyName" | "website" | "email" | "keywords";
 
 // Só o tipo é exportado daqui — um arquivo "use server" só pode exportar
 // funções async (confirmado por erro de build real nesta versão do
@@ -40,7 +40,6 @@ export async function startDiagnosticAction(
 ): Promise<StartDiagnosticActionState> {
   const parsed = startDiagnosticSchema.safeParse({
     name: formData.get("name"),
-    phone: formData.get("phone"),
     companyName: formData.get("companyName"),
     website: formData.get("website"),
     email: formData.get("email"),
@@ -59,7 +58,6 @@ export async function startDiagnosticAction(
       const key = issue.path[0];
       if (
         key === "name" ||
-        key === "phone" ||
         key === "companyName" ||
         key === "website" ||
         key === "email" ||
@@ -96,7 +94,6 @@ export async function startDiagnosticAction(
   try {
     const diagnostic = await startDiagnostic({
       name: parsed.data.name,
-      phone: parsed.data.phone,
       companyName: parsed.data.companyName,
       website: parsed.data.website,
       email: parsed.data.email,

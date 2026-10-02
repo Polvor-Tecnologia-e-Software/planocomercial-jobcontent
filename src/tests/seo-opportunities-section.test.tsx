@@ -21,7 +21,15 @@ describe("SeoOpportunitiesSection", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("mostra o selo de 'oportunidade de nicho não explorada' só nas palavras-chave com coverageGap true", () => {
+  it("mostra o selo, o título e deixa claro que os volumes são estimativas da IA", () => {
+    render(<SeoOpportunitiesSection opportunities={[makeOpportunity()]} />);
+    expect(screen.getByText("04 · Oportunidades")).toBeInTheDocument();
+    expect(screen.getByText("Palavras-chave para a sua empresa")).toBeInTheDocument();
+    expect(screen.getByText(/Não são números oficiais do Google/)).toBeInTheDocument();
+    expect(screen.getByText("Buscas/mês (est.)")).toBeInTheDocument();
+  });
+
+  it("mostra o status 'Nicho não explorado' só nas palavras-chave com coverageGap true", () => {
     render(
       <SeoOpportunitiesSection
         opportunities={[
@@ -31,43 +39,36 @@ describe("SeoOpportunitiesSection", () => {
       />,
     );
 
-    const badges = screen.getAllByText("Oportunidade de nicho não explorada");
-    expect(badges).toHaveLength(1);
+    expect(screen.getAllByText("Nicho não explorado")).toHaveLength(1);
   });
 
-  it("menciona quantas oportunidades são de nicho no texto de apoio quando existe pelo menos uma", () => {
-    render(
-      <SeoOpportunitiesSection
-        opportunities={[
-          makeOpportunity({ keyword: "consultoria financeira", coverageGap: true, opportunityRank: 1 }),
-          makeOpportunity({ keyword: "planejamento tributário", coverageGap: true, opportunityRank: 2 }),
-        ]}
-      />,
+  it("só explica os nichos marcados no texto de apoio quando existe pelo menos um", () => {
+    const { rerender } = render(
+      <SeoOpportunitiesSection opportunities={[makeOpportunity({ coverageGap: true })]} />,
     );
+    expect(screen.getByText(/Os temas marcados ainda não aparecem no site/)).toBeInTheDocument();
 
-    expect(screen.getByText(/2 delas ainda não aparecem no perfil da sua empresa/)).toBeInTheDocument();
+    rerender(<SeoOpportunitiesSection opportunities={[makeOpportunity({ coverageGap: false })]} />);
+    expect(screen.queryByText(/Os temas marcados ainda não aparecem no site/)).not.toBeInTheDocument();
   });
 
-  it("não menciona oportunidades de nicho no texto de apoio quando nenhuma tem coverageGap", () => {
-    render(
-      <SeoOpportunitiesSection
-        opportunities={[makeOpportunity({ coverageGap: false })]}
-      />,
-    );
-
-    expect(screen.queryByText(/ainda não aparece/)).not.toBeInTheDocument();
-  });
-
-  it("mostra o volume de busca e a concorrência de cada palavra-chave", () => {
+  it("mostra a palavra-chave, o volume estimado e a concorrência em cada linha", () => {
     render(<SeoOpportunitiesSection opportunities={[makeOpportunity()]} />);
 
     expect(screen.getByText("consultoria financeira")).toBeInTheDocument();
-    expect(screen.getByText("~1.000 buscas/mês (estimativa da IA)")).toBeInTheDocument();
-    expect(screen.getByText("Concorrência baixa")).toBeInTheDocument();
+    expect(screen.getByText("~1.000")).toBeInTheDocument();
+    expect(screen.getByText("Baixa")).toBeInTheDocument();
   });
 
-  it("mostra 'Volume de busca não disponível' quando avgMonthlySearches é null", () => {
+  it("mostra 'Não disponível' quando avgMonthlySearches é null, sem inventar volume", () => {
     render(<SeoOpportunitiesSection opportunities={[makeOpportunity({ avgMonthlySearches: null })]} />);
-    expect(screen.getByText("Volume de busca não disponível")).toBeInTheDocument();
+    expect(screen.getByText("Não disponível")).toBeInTheDocument();
+  });
+
+  it("traz o CTA de WhatsApp para falar com especialista em SEO", () => {
+    render(<SeoOpportunitiesSection opportunities={[makeOpportunity()]} />);
+    const link = screen.getByRole("link", { name: /Falar com especialista em SEO/ });
+    expect(link).toHaveAttribute("href", expect.stringContaining("https://wa.me/"));
+    expect(link).toHaveAttribute("target", "_blank");
   });
 });

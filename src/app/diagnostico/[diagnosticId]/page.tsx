@@ -12,8 +12,9 @@ import {
   siteAnalysisResultSchema,
   type SiteAnalysisResult,
 } from "@/lib/ai/site-analysis-schema";
+import { PhoneGate } from "@/components/result/phone-gate";
 import { ResultPage } from "@/components/result/result-page";
-import { companies, diagnostics, siteAnalyses } from "@/lib/database";
+import { companies, diagnostics, leads, siteAnalyses } from "@/lib/database";
 import { analyzeSite } from "@/server/analyze-site";
 import { getCommercialPlanResult } from "@/server/get-commercial-plan-result";
 import { resumeDiagnosticJourney } from "@/server/resume-diagnostic-journey";
@@ -25,7 +26,17 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 // IA, gerar PDF) — nesta versão do Next.js, isso se configura aqui, não
 // dentro do arquivo de cada Server Action (erro de build real: "Only
 // async functions are allowed to be exported in a 'use server' file").
-export const maxDuration = 60;
+//
+// Bug real em produção: estava em 60s, mas a chamada de IA do plano
+// comercial (src/lib/ai/commercial-plan.ts) já usa timeoutMs: 180_000 —
+// com maxDuration mais curto que o timeout da própria chamada, o Next.js
+// podia encerrar a Server Action ANTES da IA terminar, independente do
+// que o código interno permitisse. 240s dá margem acima dos 180s da
+// chamada de IA mais o processamento depois dela (numeric-guard, grounding,
+// gravação no banco). Atenção ao migrar pra produção na Vercel: o teto
+// de maxDuration depende do plano contratado (Hobby = 60s no máximo,
+// Pro = 300s) — confirmar o plano antes do deploy.
+export const maxDuration = 240;
 
 export const metadata: Metadata = {
   title: "Preparando seu diagnóstico | Plano Comercial Inteligente em 90 Dias™",
@@ -141,6 +152,23 @@ export default async function DiagnosticStatusPage({ params, searchParams }: Pag
     // nenhum código) — getCommercialPlanResult decide, a partir do banco,
     // qual desses estados mostrar. Nunca chama IA para renderizar.
     const resultState = await getCommercialPlanResult(diagnosticId);
+
+    // Pedido explícito: o telefone é pedido ANTES de liberar a tela do
+    // diagnóstico (não na primeira captura). Sem lead associado não há
+    // onde gravar — nesse caso a tela segue direto.
+    const lead = diagnostic.lead_id ? await leads.getLeadById(diagnostic.lead_id) : null;
+    if (lead && !lead.phone && resultState.status !== "not_found") {
+      return (
+        <PageShell progress={85}>
+          <PhoneGate
+            diagnosticId={diagnosticId}
+            companyName={resultState.companyName}
+            needsGeneration={resultState.status === "not_generated"}
+          />
+        </PageShell>
+      );
+    }
+
     return (
       <PageShell progress={90} size="wide">
         <ResultPage state={resultState} />

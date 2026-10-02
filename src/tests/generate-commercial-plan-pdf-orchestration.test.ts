@@ -25,6 +25,7 @@ vi.mock("@react-pdf/renderer", () => ({
   Page: () => null,
   Text: () => null,
   View: () => null,
+  StyleSheet: { create: <T,>(styles: T) => styles },
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -39,12 +40,14 @@ vi.mock("@/lib/supabase/admin", () => ({
 }));
 
 const { generateCommercialPlanPdf } = await import("@/server/generate-commercial-plan-pdf");
+const { PDF_TEMPLATE_VERSION } = await import("@/lib/pdf/commercial-plan-document");
 
 function completedResult(overrides: Record<string, unknown> = {}) {
   return {
     status: "completed" as const,
     diagnosticId: "diagnostic-1",
     companyName: "CodeBit",
+    companyWebsite: "codebit.com.br",
     generatedAt: "2026-01-05T00:00:00.000Z",
     plan: { executiveDiagnosis: "Diagnóstico." },
     funnelStages: [],
@@ -111,7 +114,7 @@ describe("generateCommercialPlanPdf — cache e versionamento", () => {
       id: "pdf-old",
       storage_path: "diagnostic-1/existing.pdf",
       report_hash: reportHash,
-      template_version: "commercial-plan-pdf-v11",
+      template_version: PDF_TEMPLATE_VERSION,
       version: 3,
       status: "available",
     });
@@ -250,7 +253,9 @@ function computeExpectedHash(result: ReturnType<typeof completedResult>): string
         dataQualityPercentage: result.dataQualityPercentage,
         confidence: result.confidence,
         seoOpportunities: result.seoOpportunities,
-        templateVersion: "commercial-plan-pdf-v11",
+        companyName: result.companyName,
+        companyWebsite: result.companyWebsite,
+        templateVersion: PDF_TEMPLATE_VERSION,
       }),
       "utf-8",
     )

@@ -58,7 +58,20 @@ function riskFieldsOf(plan: CommercialPlan): { field: string; text: string }[] {
   const fields: { field: string; text: string }[] = [
     { field: "goalGapInterpretation", text: plan.goalGapInterpretation },
     { field: "rootCause.description", text: plan.rootCause.description },
+    // O prompt já instrui "só cite um número que já existe no contexto,
+    // mesma regra de goalGapInterpretation" (ver STRATEGIC_SUMMARY_BLOCK
+    // em commercial-plan-prompt.ts) — essa linha faltava aqui, então a
+    // regra nunca era de fato verificada: um headline com a mesma
+    // "ponte numérica" encontrada em phaseSummaries passaria batido.
+    { field: "strategicSummary.headline", text: plan.strategicSummary.headline },
   ];
+
+  (["days1to30", "days31to60", "days61to90"] as const).forEach((phase) => {
+    fields.push(
+      { field: `phaseSummaries.${phase}.goal`, text: plan.phaseSummaries[phase].goal },
+      { field: `phaseSummaries.${phase}.milestone`, text: plan.phaseSummaries[phase].milestone },
+    );
+  });
 
   plan.indicators.forEach((indicator, index) => {
     if (indicator.currentValue) {

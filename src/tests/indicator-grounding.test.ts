@@ -23,6 +23,23 @@ function makePlan(indicators: Indicator[]): CommercialPlan {
       primaryIndicator: "x",
       timeframe: "30 dias",
     })),
+    strategicSummary: {
+      headline: "x",
+      positioning: "x",
+      channelStrategy: "x",
+      contentJourney: "x",
+      mediaBudgetPriority: [
+        { channel: "Google", priority: "alta" },
+        { channel: "Meta", priority: "baixa" },
+      ],
+      commercialProcess: "x",
+      premises: "x",
+    },
+    phaseSummaries: {
+      days1to30: { goal: "x", milestone: "x" },
+      days31to60: { goal: "x", milestone: "x" },
+      days61to90: { goal: "x", milestone: "x" },
+    },
     plan90Days: { days1to30: [], days31to60: [], days61to90: [] },
     weeklyManagerAgenda: [{ focus: "x", activities: ["x"] }],
     indicators,

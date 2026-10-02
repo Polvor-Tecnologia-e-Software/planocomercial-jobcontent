@@ -27,6 +27,23 @@ function validPlan(overrides: Partial<CommercialPlan> = {}): CommercialPlan {
       primaryIndicator: "Indicador principal",
       timeframe: "30 dias",
     })),
+    strategicSummary: {
+      headline: "Meta do trimestre.",
+      positioning: "Posicionamento.",
+      channelStrategy: "Estratégia de canais.",
+      contentJourney: "Jornada de conteúdo.",
+      mediaBudgetPriority: [
+        { channel: "Google", priority: "alta" },
+        { channel: "Meta", priority: "baixa" },
+      ],
+      commercialProcess: "Processo comercial.",
+      premises: "Premissas.",
+    },
+    phaseSummaries: {
+      days1to30: { goal: "Meta do mês 1.", milestone: "Marco do mês 1." },
+      days31to60: { goal: "Meta do mês 2.", milestone: "Marco do mês 2." },
+      days61to90: { goal: "Meta do mês 3.", milestone: "Marco do mês 3." },
+    },
     plan90Days: {
       days1to30: [
         {
@@ -38,6 +55,8 @@ function validPlan(overrides: Partial<CommercialPlan> = {}): CommercialPlan {
           richMaterialBrief: null,
           paidTrafficBrief: null,
           cadenceBrief: null,
+          landingPageBrief: null,
+          playbookBrief: null,
           suggestedOwner: "Marketing",
           deadline: "Semana 2",
           indicator: "% de leads qualificados",
@@ -61,6 +80,8 @@ function validPlan(overrides: Partial<CommercialPlan> = {}): CommercialPlan {
           richMaterialBrief: null,
           paidTrafficBrief: null,
           cadenceBrief: null,
+          landingPageBrief: null,
+          playbookBrief: null,
           suggestedOwner: "Vendas",
           deadline: "Semana 6",
           indicator: "Indicador da fase 2",
@@ -77,10 +98,14 @@ function validPlan(overrides: Partial<CommercialPlan> = {}): CommercialPlan {
           blogBrief: null,
           richMaterialBrief: null,
           paidTrafficBrief: {
+            primaryText: "Pare de depender só de indicação para fechar negócio.",
             headline: "Título do criativo do anúncio",
             subheadline: "Linha de apoio com a dor específica do público-alvo.",
+            ctaText: "Saiba mais",
           },
           cadenceBrief: null,
+          landingPageBrief: null,
+          playbookBrief: null,
           suggestedOwner: "Vendas",
           deadline: "Semana 10",
           indicator: "Indicador da fase 3",
@@ -128,6 +153,7 @@ const UNCALCULABLE_STAGE: ResultFunnelStage = {
 function baseProps(overrides: Record<string, unknown> = {}) {
   return {
     companyName: "CodeBit Tecnologia",
+    companyWebsite: "codebit.com.br" as string | null,
     generatedAt: "2026-01-05T00:00:00.000Z",
     plan: validPlan(),
     funnelStages: [CALCULABLE_STAGE, UNCALCULABLE_STAGE],
@@ -255,22 +281,38 @@ describe("CommercialPlanDocument — renderização", () => {
     );
   });
 
-  it("renderiza o brief de cadência (toques com canal + copy) sem lançar erro", async () => {
+  it("renderiza a cadência de 5 dias e o passo a passo do playbook sem lançar erro", async () => {
     await renderAndAssertValidPdf(
       baseProps({
         plan: validPlan({
           plan90Days: {
             ...validPlan().plan90Days,
+            days1to30: [
+              {
+                ...validPlan().plan90Days.days1to30[0],
+                playbookBrief: {
+                  steps: [
+                    { title: "Mapear o cliente ideal", howTo: "Liste os melhores clientes e o que têm em comum." },
+                    { title: "Roteiro de qualificação", howTo: "Escreva as perguntas de cada etapa." },
+                    { title: "Objeções", howTo: "Registre as respostas que funcionam." },
+                    { title: "Documentar e treinar", howTo: "Centralize num documento e treine o time." },
+                  ],
+                  adoptionTip: "Revise todo mês na reunião comercial.",
+                },
+              },
+            ],
             days61to90: [
               {
                 ...validPlan().plan90Days.days61to90[0],
                 actionType: "crm_pipeline",
                 paidTrafficBrief: null,
                 cadenceBrief: {
-                  touchpoints: [
-                    { moment: "D+2", channel: "E-mail", copy: "Oi [Nome], só reforçando a proposta que te enviei." },
-                    { moment: "D+5", channel: "WhatsApp", copy: "Ficou alguma dúvida sobre a proposta?" },
-                    { moment: "D+10", channel: "Ligação", copy: "Última tentativa antes de encerrar o contato." },
+                  days: [
+                    { channels: ["email", "whatsapp"], goal: "Primeiro contato e envio do material" },
+                    { channels: ["phone", "whatsapp"], goal: "Qualificar a necessidade" },
+                    { channels: ["linkedin"], goal: "Gerar valor com um caso" },
+                    { channels: ["phone"], goal: "Tratar objeção" },
+                    { channels: ["email"], goal: "Encerrar ou agendar" },
                   ],
                 },
               },
@@ -281,15 +323,150 @@ describe("CommercialPlanDocument — renderização", () => {
     );
   });
 
-  it("plano com número máximo de ações por fase (5) ainda renderiza", async () => {
+  it("renderiza o brief de landing page (hero, formulário, seções) sem lançar erro", async () => {
+    await renderAndAssertValidPdf(
+      baseProps({
+        plan: validPlan({
+          plan90Days: {
+            ...validPlan().plan90Days,
+            days31to60: [
+              {
+                ...validPlan().plan90Days.days31to60[0],
+                actionType: "landing_page",
+                blogBrief: null,
+                landingPageBrief: {
+                  name: "Orçamento técnico",
+                  url: "/orcamento-tecnico",
+                  goal: "Capturar leads prontos para orçamento.",
+                  heroHeadline: "Receba um orçamento técnico em 24h",
+                  heroSubheadline: "Fale com um especialista sem compromisso.",
+                  formFields: ["Nome", "WhatsApp", "Segmento da empresa"],
+                  buttonText: "Quero meu orçamento técnico",
+                  sections: [
+                    { title: "Como funciona", description: "x" },
+                    { title: "Prova social", description: "x" },
+                    { title: "Diferenciais", description: "x" },
+                    { title: "FAQ", description: "x" },
+                  ],
+                },
+              },
+            ],
+          },
+        }),
+      }),
+    );
+  });
+
+  it("renderiza os mockups de material rico, anúncio e landing page juntos, com e sem site informado", async () => {
+    const base = validPlan().plan90Days.days1to30[0];
+    const plan = validPlan({
+      plan90Days: {
+        ...validPlan().plan90Days,
+        days1to30: [
+          {
+            ...base,
+            actionType: "rich_material",
+            title: "Guia de Especificação de Válvulas Industriais",
+            richMaterialBrief: {
+              format: "e-book + planilha",
+              subtitle: "Roteiro prático para especificar com segurança.",
+              sections: [
+                { title: "Condições do processo", description: "Quais dados levantar." },
+                { title: "Tipo de válvula", description: "Quando usar cada uma." },
+                { title: "Materiais", description: "Compatibilidade química." },
+              ],
+              coverIdea: "Capa azul-marinho com corte técnico de válvula.",
+            },
+          },
+          {
+            ...base,
+            actionType: "paid_traffic",
+            paidTrafficBrief: {
+              primaryText: "Engenheiros de manutenção: 6 capítulos práticos.",
+              headline: "Sua válvula foi especificada para durar?",
+              subheadline: "Baixe o guia gratuito.",
+              ctaText: "Baixar",
+            },
+          },
+          {
+            ...base,
+            actionType: "landing_page",
+            landingPageBrief: {
+              name: "Orçamento técnico",
+              url: "/orcamento-tecnico",
+              goal: "Converter visitantes em pedidos de orçamento.",
+              heroHeadline: "Válvulas industriais com engenharia de aplicação",
+              heroSubheadline: "Receba uma proposta técnica validada.",
+              formFields: ["Nome", "Empresa", "WhatsApp", "Tipo de válvula"],
+              buttonText: "Quero minha proposta técnica",
+              sections: [
+                { title: "Como funciona", description: "x" },
+                { title: "Prova social", description: "x" },
+                { title: "Diferenciais", description: "x" },
+                { title: "FAQ", description: "x" },
+              ],
+            },
+          },
+        ],
+      },
+    });
+
+    await renderAndAssertValidPdf(baseProps({ plan }));
+    await renderAndAssertValidPdf(baseProps({ plan, companyWebsite: null }));
+  });
+
+  it("plano com número máximo de ações por fase (7) ainda renderiza", async () => {
     const action = validPlan().plan90Days.days1to30[0];
     await renderAndAssertValidPdf(
       baseProps({
         plan: validPlan({
           plan90Days: {
-            days1to30: Array.from({ length: 5 }, (_, i) => ({ ...action, title: `Ação ${i + 1}` })),
+            days1to30: Array.from({ length: 7 }, (_, i) => ({ ...action, title: `Ação ${i + 1}` })),
             days31to60: [action],
             days61to90: [action],
+          },
+        }),
+      }),
+    );
+  });
+
+  it("renderiza o resumo estratégico com o número máximo de 5 canais de mídia sem lançar erro", async () => {
+    await renderAndAssertValidPdf(
+      baseProps({
+        plan: validPlan({
+          strategicSummary: {
+            headline: "Meta do trimestre.",
+            positioning: "Posicionamento.",
+            channelStrategy: "Estratégia de canais.",
+            contentJourney: "Jornada de conteúdo.",
+            mediaBudgetPriority: [
+              { channel: "Google Ads", priority: "alta" },
+              { channel: "LinkedIn Ads", priority: "media" },
+              { channel: "Meta Ads", priority: "media" },
+              { channel: "SEO", priority: "baixa" },
+              { channel: "Testes", priority: "teste" },
+            ],
+            commercialProcess: "Processo comercial.",
+            premises: "Premissas.",
+          },
+        }),
+      }),
+    );
+  });
+
+  it("renderiza o cronograma das frentes com várias frentes diferentes sem lançar erro", async () => {
+    const action = validPlan().plan90Days.days1to30[0];
+    await renderAndAssertValidPdf(
+      baseProps({
+        plan: validPlan({
+          plan90Days: {
+            days1to30: [
+              { ...action, actionType: "content_blog" },
+              { ...action, actionType: "seo" },
+              { ...action, actionType: "paid_traffic" },
+            ],
+            days31to60: [{ ...action, actionType: "crm_pipeline" }],
+            days61to90: [{ ...action, actionType: "sales_training" }],
           },
         }),
       }),

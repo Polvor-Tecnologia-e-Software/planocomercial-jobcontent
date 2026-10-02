@@ -83,6 +83,23 @@ function validPlan(overrides: Record<string, unknown> = {}) {
       primaryIndicator: "Indicador",
       timeframe: "30 dias",
     })),
+    strategicSummary: {
+      headline: "Meta do trimestre.",
+      positioning: "Posicionamento.",
+      channelStrategy: "Estratégia de canais.",
+      contentJourney: "Jornada de conteúdo.",
+      mediaBudgetPriority: [
+        { channel: "Google", priority: "alta" },
+        { channel: "Meta", priority: "baixa" },
+      ],
+      commercialProcess: "Processo comercial.",
+      premises: "Premissas.",
+    },
+    phaseSummaries: {
+      days1to30: { goal: "Meta do mês 1.", milestone: "Marco do mês 1." },
+      days31to60: { goal: "Meta do mês 2.", milestone: "Marco do mês 2." },
+      days61to90: { goal: "Meta do mês 3.", milestone: "Marco do mês 3." },
+    },
     plan90Days: {
       days1to30: [
         {
@@ -94,6 +111,8 @@ function validPlan(overrides: Record<string, unknown> = {}) {
           richMaterialBrief: null,
           paidTrafficBrief: null,
           cadenceBrief: null,
+          landingPageBrief: null,
+          playbookBrief: null,
           suggestedOwner: "Vendas",
           deadline: "Semana 1",
           indicator: "Indicador",
@@ -111,6 +130,8 @@ function validPlan(overrides: Record<string, unknown> = {}) {
           richMaterialBrief: null,
           paidTrafficBrief: null,
           cadenceBrief: null,
+          landingPageBrief: null,
+          playbookBrief: null,
           suggestedOwner: "Vendas",
           deadline: "Semana 5",
           indicator: "Indicador",
@@ -128,6 +149,8 @@ function validPlan(overrides: Record<string, unknown> = {}) {
           richMaterialBrief: null,
           paidTrafficBrief: null,
           cadenceBrief: null,
+          landingPageBrief: null,
+          playbookBrief: null,
           suggestedOwner: "Vendas",
           deadline: "Semana 9",
           indicator: "Indicador",

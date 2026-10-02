@@ -54,13 +54,23 @@ export function ResultPage({ state }: ResultPageProps) {
         primaryBottleneck={state.primaryBottleneck}
         dataQualityPercentage={state.dataQualityPercentage}
         confidence={state.confidence}
+        leadsCurrent={state.funnelStages.find((stage) => stage.key === "leads")?.current ?? null}
+        leadsRequired={state.funnelStages.find((stage) => stage.key === "leads")?.required ?? null}
       />
       <FunnelLeakMap stages={state.funnelStages} />
       <RootCauseChain description={plan.rootCause.description} evidence={plan.rootCause.evidence} />
       <PrioritiesSection priorities={plan.priorities} />
-      <Plan90DaysSection plan={plan.plan90Days} />
-      <WeeklyAgendaSection agenda={plan.weeklyManagerAgenda} />
-      <IndicatorsSection indicators={plan.indicators} />
+      <Plan90DaysSection
+        plan={plan.plan90Days}
+        strategicSummary={plan.strategicSummary}
+        phaseSummaries={plan.phaseSummaries}
+        companyName={state.companyName}
+        companyWebsite={state.companyWebsite}
+      />
+      <section className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <WeeklyAgendaSection agenda={plan.weeklyManagerAgenda} />
+        <IndicatorsSection indicators={plan.indicators} />
+      </section>
       <SeoOpportunitiesSection opportunities={state.seoOpportunities} />
       <LimitationsSection limitations={plan.limitations} />
       <CtaSection diagnosticId={state.diagnosticId} />

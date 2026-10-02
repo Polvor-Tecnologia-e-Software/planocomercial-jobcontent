@@ -28,6 +28,76 @@ const DEFAULT_TIMEOUT_MS = 30_000;
 /** Número de tentativas ADICIONAIS após a primeira — 1 = no máximo 2 chamadas de rede no total. */
 const DEFAULT_MAX_RETRIES = 1;
 
+type JsonSchemaLike = {
+  type?: string;
+  maxLength?: number;
+  items?: JsonSchemaLike;
+  properties?: Record<string, JsonSchemaLike>;
+  anyOf?: JsonSchemaLike[];
+  enum?: unknown[];
+};
+
+function matchesValueShape(node: JsonSchemaLike, value: unknown): boolean {
+  if (value === null) return node.type === "null";
+  if (typeof value === "string") return node.type === "string";
+  if (Array.isArray(value)) return node.type === "array";
+  if (typeof value === "object") return node.type === "object";
+  return false;
+}
+
+/**
+ * Corta (em vez de deixar a validação Zod rejeitar) qualquer string da
+ * resposta da IA que ultrapasse o maxLength do PRÓPRIO JSON Schema já
+ * construído pra tool (nunca duplica a regra em outro lugar) — bug real em
+ * produção: a OpenAI NUNCA impõe minLength/maxLength de string, nem com
+ * `strict: true` (Structured Outputs só garante minItems/maxItems de
+ * array e a FORMA dos campos — tipo, obrigatoriedade — nunca o tamanho de
+ * uma string). Sem isso, um único campo de texto livre um pouco mais
+ * verboso que o pedido derrubava a chamada inteira (ver histórico real em
+ * src/lib/ai/site-analysis-schema.ts: já aconteceu com o campo `excerpt`).
+ * Como qualquer schema usado aqui tem dezenas de campos de texto livre
+ * (títulos, parágrafos, resumos), corrigir isso UMA vez aqui — pra
+ * qualquer chamador, atual ou futuro — é mais seguro do que embrulhar
+ * campo por campo com `z.preprocess()` em cada schema.
+ *
+ * NUNCA mexe em valor de enum (`node.enum`): cortar um valor de enum já
+ * errado só pioraria (ex.: "média" virando "méd"), nunca corrige — esse
+ * tipo de problema (a IA escreveu uma variante fora da lista exata) é um
+ * erro de VALOR, não de tamanho, e precisa de normalização específica por
+ * campo (ver CONFIDENCE_ALIASES em site-analysis-schema.ts).
+ */
+function truncateOversizedStrings(value: unknown, node: JsonSchemaLike | undefined): unknown {
+  if (!node) return value;
+
+  if (node.anyOf) {
+    const branch = node.anyOf.find((candidate) => matchesValueShape(candidate, value));
+    return branch ? truncateOversizedStrings(value, branch) : value;
+  }
+
+  if (typeof value === "string") {
+    if (node.enum) return value;
+    if (typeof node.maxLength === "number" && value.length > node.maxLength) {
+      return value.slice(0, node.maxLength);
+    }
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return node.items ? value.map((item) => truncateOversizedStrings(item, node.items)) : value;
+  }
+
+  if (value && typeof value === "object") {
+    if (!node.properties) return value;
+    const result: Record<string, unknown> = { ...(value as Record<string, unknown>) };
+    for (const key of Object.keys(result)) {
+      result[key] = truncateOversizedStrings(result[key], node.properties[key]);
+    }
+    return result;
+  }
+
+  return value;
+}
+
 /**
  * Erro de transporte/infraestrutura da chamada de IA (timeout, rede,
  * indisponibilidade) — diferente de AiResponseValidationError, que é a
@@ -144,10 +214,10 @@ export async function generateStructuredJson<T>(params: {
       const latencyMs = Date.now() - startedAt;
 
       const toolCall = response.choices[0]?.message.tool_calls?.find(
-        (call) => call.function.name === params.toolName,
+        (call) => call.type === "function" && call.function.name === params.toolName,
       );
 
-      if (!toolCall) {
+      if (!toolCall || toolCall.type !== "function") {
         throw new AiResponseValidationError(
           "A IA não retornou uma chamada de tool com o resultado esperado.",
           response.choices[0]?.message,
@@ -163,6 +233,10 @@ export async function generateStructuredJson<T>(params: {
           toolCall.function.arguments,
         );
       }
+
+      // Corta campos de texto livre além do maxLength ANTES de validar —
+      // ver truncateOversizedStrings acima para o porquê.
+      parsedArguments = truncateOversizedStrings(parsedArguments, jsonSchema as unknown as JsonSchemaLike);
 
       const validation = params.schema.safeParse(parsedArguments);
       if (!validation.success) {

@@ -82,6 +82,31 @@ describe("siteAnalysisResultSchema", () => {
     const result = siteAnalysisResultSchema.safeParse(withoutConfidence);
     expect(result.success).toBe(false);
   });
+
+  it.each([
+    ["High", "high"],
+    ["ALTA", "high"],
+    [" alta ", "high"],
+    ["Medium", "medium"],
+    ["média", "medium"],
+    ["medio", "medium"],
+    ["Low", "low"],
+    ["baixa", "low"],
+  ])(
+    "normaliza a variante %s de confidence pro valor canônico %s — bug real: a chamada não usa strict:true (ver comentário em site-analysis.ts), então a IA às vezes escreve uma variante fora do enum exato",
+    (input, expected) => {
+      const result = siteAnalysisResultSchema.safeParse({ ...validResult, confidence: input });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.confidence).toBe(expected);
+      }
+    },
+  );
+
+  it("continua rejeitando um valor de confidence que não é nenhuma variante conhecida", () => {
+    const result = siteAnalysisResultSchema.safeParse({ ...validResult, confidence: "certeza_total" });
+    expect(result.success).toBe(false);
+  });
 });
 
 describe("siteAnalysisEvidenceSchema", () => {
@@ -107,7 +132,7 @@ describe("siteAnalysisEvidenceSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejeita trechos de evidência muito longos", () => {
+  it("rejeita trechos de evidência muito longos — o corte pra 180 caracteres acontece em generateStructuredJson (src/lib/ai/client.ts), não no schema isolado (ver ai-client-retry.test.ts)", () => {
     const result = siteAnalysisEvidenceSchema.safeParse({
       ...validEvidence,
       excerpt: "a".repeat(500),
@@ -123,5 +148,13 @@ describe("siteAnalysisEvidenceSchema", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+
+  it("normaliza a confidence da evidência igual ao campo confidence do topo (mesmo schema reaproveitado)", () => {
+    const result = siteAnalysisEvidenceSchema.safeParse({ ...validEvidence, confidence: "Alta" });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.confidence).toBe("high");
+    }
   });
 });

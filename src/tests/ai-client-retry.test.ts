@@ -214,6 +214,87 @@ describe("generateStructuredJson — retry limitado em falhas de transporte", ()
     expect(createCompletion).toHaveBeenCalledTimes(1);
   });
 
+  it("corta um campo de texto livre que ultrapassa o maxLength do schema, em vez de rejeitar a resposta inteira — bug real: a OpenAI nunca impõe maxLength de string, nem com strict:true", async () => {
+    const schemaComLimite = z.object({ title: z.string().max(10) }).strict();
+    createCompletion.mockResolvedValueOnce(toolResponse({ title: "um título bem maior que dez caracteres" }));
+
+    const result = await generateStructuredJson({
+      system: "s",
+      userPrompt: "u",
+      schema: schemaComLimite,
+      toolName: "test_tool",
+      toolDescription: "d",
+    });
+
+    expect(result.data.title).toBe("um título "); // 10 primeiros caracteres
+    expect(result.data.title).toHaveLength(10);
+  });
+
+  it("corta o maxLength dentro de um array aninhado de objetos (cada item, independentemente)", async () => {
+    const schemaComLista = z
+      .object({ items: z.array(z.object({ note: z.string().max(5) }).strict()) })
+      .strict();
+    createCompletion.mockResolvedValueOnce(
+      toolResponse({ items: [{ note: "curto" }, { note: "um texto bem mais longo que cinco" }] }),
+    );
+
+    const result = await generateStructuredJson({
+      system: "s",
+      userPrompt: "u",
+      schema: schemaComLista,
+      toolName: "test_tool",
+      toolDescription: "d",
+    });
+
+    expect(result.data.items[0].note).toBe("curto");
+    expect(result.data.items[1].note).toBe("um te");
+  });
+
+  it("corta o maxLength de um campo nullable (.nullable() vira anyOf no JSON Schema)", async () => {
+    const schemaComNullable = z.object({ summary: z.string().max(5).nullable() }).strict();
+    createCompletion.mockResolvedValueOnce(toolResponse({ summary: "um resumo bem mais longo" }));
+
+    const result = await generateStructuredJson({
+      system: "s",
+      userPrompt: "u",
+      schema: schemaComNullable,
+      toolName: "test_tool",
+      toolDescription: "d",
+    });
+
+    expect(result.data.summary).toBe("um re");
+  });
+
+  it("NUNCA corta um valor de enum, mesmo que a validação acabe rejeitando — cortar só pioraria um valor já errado", async () => {
+    const schemaComEnum = z.object({ confidence: z.enum(["low", "medium", "high"]) }).strict();
+    createCompletion.mockResolvedValueOnce(toolResponse({ confidence: "Média" }));
+
+    await expect(
+      generateStructuredJson({
+        system: "s",
+        userPrompt: "u",
+        schema: schemaComEnum,
+        toolName: "test_tool",
+        toolDescription: "d",
+      }),
+    ).rejects.toThrow(AiResponseValidationError);
+  });
+
+  it("não corta uma string que já está dentro do limite", async () => {
+    const schemaComLimite = z.object({ title: z.string().max(10) }).strict();
+    createCompletion.mockResolvedValueOnce(toolResponse({ title: "curto" }));
+
+    const result = await generateStructuredJson({
+      system: "s",
+      userPrompt: "u",
+      schema: schemaComLimite,
+      toolName: "test_tool",
+      toolDescription: "d",
+    });
+
+    expect(result.data.title).toBe("curto");
+  });
+
   it("aplica timeout: uma chamada que nunca resolve é abortada", async () => {
     createCompletion.mockImplementation(
       (_params: unknown, options: { signal: AbortSignal }) =>

@@ -9,21 +9,26 @@ type PrioritiesSectionProps = {
   priorities: Priority[];
 };
 
-const NUMBER_GRADIENT = [
-  "bg-gradient-brand-blue",
-  "bg-gradient-brand-orange",
-  "bg-gradient-to-br from-brand-orange to-brand-orange-deep",
-];
+/** 01 e 02 em azul, 03 em laranja — mesmas 2 cores de marca usadas no resto da tela, sem degradê (pedido explícito, layout de referência). */
+const NUMBER_COLOR = ["text-brand-blue", "text-brand-blue", "text-brand-orange-deep"];
 
-/** Seção 4 (BRD): as 3 prioridades, sempre exatamente 3 (garantido pelo schema da Etapa 3). */
+/**
+ * Seção 4 (BRD), redesenhada a partir do layout de referência anexado
+ * (pedido explícito): cabeçalho com selo numerado + título, e cartões
+ * simplificados — número, título, racional e uma linha de
+ * indicador/prazo, sem os campos "Problema resolvido"/"Impacto
+ * esperado" do layout anterior (o schema continua gerando os dois, só a
+ * tela não os mostra mais aqui — ver Priority em commercial-plan.ts).
+ * Sempre exatamente 3 prioridades (garantido pelo schema da Etapa 3).
+ */
 export function PrioritiesSection({ priorities }: PrioritiesSectionProps) {
   return (
     <section className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <h2 className="text-brand-navy-900 text-2xl font-extrabold">Três prioridades</h2>
-        <p className="text-muted-foreground text-sm">
-          O que mais move o resultado nos próximos 90 dias.
-        </p>
+      <div className="flex flex-col gap-1.5">
+        <span className="text-brand-blue text-[11px] font-bold tracking-wide uppercase">03 · Prioridades</span>
+        <h2 className="text-brand-navy-900 text-2xl font-extrabold">
+          As três decisões que mais movem o resultado
+        </h2>
       </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
@@ -35,8 +40,8 @@ export function PrioritiesSection({ priorities }: PrioritiesSectionProps) {
             <CardContent className="flex flex-col gap-3 p-6">
               <span
                 className={cn(
-                  "bg-clip-text text-4xl leading-none font-extrabold text-transparent tabular-nums",
-                  NUMBER_GRADIENT[index % NUMBER_GRADIENT.length],
+                  "text-4xl leading-none font-extrabold tabular-nums",
+                  NUMBER_COLOR[index % NUMBER_COLOR.length],
                 )}
               >
                 {String(index + 1).padStart(2, "0")}
@@ -44,26 +49,10 @@ export function PrioritiesSection({ priorities }: PrioritiesSectionProps) {
               <h3 className="text-brand-navy-900 text-lg font-extrabold">{priority.title}</h3>
               <p className="text-sm text-[#45505f]">{priority.rationale}</p>
 
-              <dl className="mt-1 flex flex-col gap-2.5 text-[12.5px]">
-                <div>
-                  <dt className="text-muted-foreground">Problema resolvido</dt>
-                  <dd className="text-brand-navy-900 font-medium">{priority.problemSolved}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Impacto esperado</dt>
-                  <dd className="text-brand-navy-900 font-medium">{priority.expectedImpact}</dd>
-                </div>
-                <div className="flex flex-wrap gap-x-6 gap-y-2 pt-1">
-                  <div>
-                    <dt className="text-muted-foreground">Indicador</dt>
-                    <dd className="text-brand-navy-900 font-medium">{priority.primaryIndicator}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">Prazo</dt>
-                    <dd className="text-brand-navy-900 font-medium">{priority.timeframe}</dd>
-                  </div>
-                </div>
-              </dl>
+              <p className="border-t border-[#E6EAF1] pt-3 text-[12.5px] text-muted-foreground">
+                Indicador: <span className="text-brand-navy-900 font-semibold">{priority.primaryIndicator}</span>{" "}
+                · Prazo: <span className="text-brand-navy-900 font-semibold">{priority.timeframe}</span>
+              </p>
 
               <Button
                 asChild

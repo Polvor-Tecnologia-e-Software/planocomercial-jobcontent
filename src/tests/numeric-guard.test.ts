@@ -19,6 +19,23 @@ function basePlan(overrides: Partial<CommercialPlan> = {}): CommercialPlan {
       primaryIndicator: "Indicador",
       timeframe: "30 dias",
     })),
+    strategicSummary: {
+      headline: "Meta do trimestre.",
+      positioning: "Posicionamento.",
+      channelStrategy: "Estratégia de canais.",
+      contentJourney: "Jornada de conteúdo.",
+      mediaBudgetPriority: [
+        { channel: "Google", priority: "alta" },
+        { channel: "Meta", priority: "baixa" },
+      ],
+      commercialProcess: "Processo comercial.",
+      premises: "Premissas.",
+    },
+    phaseSummaries: {
+      days1to30: { goal: "Meta do mês 1.", milestone: "Marco do mês 1." },
+      days31to60: { goal: "Meta do mês 2.", milestone: "Marco do mês 2." },
+      days61to90: { goal: "Meta do mês 3.", milestone: "Marco do mês 3." },
+    },
     plan90Days: {
       days1to30: [
         {
@@ -30,6 +47,8 @@ function basePlan(overrides: Partial<CommercialPlan> = {}): CommercialPlan {
           richMaterialBrief: null,
           paidTrafficBrief: null,
           cadenceBrief: null,
+          landingPageBrief: null,
+          playbookBrief: null,
           suggestedOwner: "Vendas",
           deadline: "Semana 1",
           indicator: "Indicador",
@@ -47,6 +66,8 @@ function basePlan(overrides: Partial<CommercialPlan> = {}): CommercialPlan {
           richMaterialBrief: null,
           paidTrafficBrief: null,
           cadenceBrief: null,
+          landingPageBrief: null,
+          playbookBrief: null,
           suggestedOwner: "Vendas",
           deadline: "Semana 5",
           indicator: "Indicador",
@@ -64,6 +85,8 @@ function basePlan(overrides: Partial<CommercialPlan> = {}): CommercialPlan {
           richMaterialBrief: null,
           paidTrafficBrief: null,
           cadenceBrief: null,
+          landingPageBrief: null,
+          playbookBrief: null,
           suggestedOwner: "Vendas",
           deadline: "Semana 9",
           indicator: "Indicador",
@@ -123,6 +146,43 @@ describe("findUngroundedNumbers", () => {
     expect(findings.some((f) => f.field === "indicators[0].currentValue" && f.value === "35")).toBe(true);
   });
 
+  it("rejeita um número inventado no marco de sucesso de uma fase (phaseSummaries)", () => {
+    const plan = basePlan({
+      phaseSummaries: {
+        days1to30: { goal: "Meta do mês 1.", milestone: "45 leads no mês." },
+        days31to60: { goal: "Meta do mês 2.", milestone: "Marco do mês 2." },
+        days61to90: { goal: "Meta do mês 3.", milestone: "Marco do mês 3." },
+      },
+    });
+    const findings = findUngroundedNumbers(plan, "{}");
+    expect(findings.some((f) => f.field === "phaseSummaries.days1to30.milestone" && f.value === "45")).toBe(
+      true,
+    );
+  });
+
+  it("aceita um número no marco de sucesso de uma fase quando ele já existe no contexto", () => {
+    const plan = basePlan({
+      phaseSummaries: {
+        days1to30: { goal: "Meta do mês 1.", milestone: "35 leads no mês." },
+        days31to60: { goal: "Meta do mês 2.", milestone: "Marco do mês 2." },
+        days61to90: { goal: "Meta do mês 3.", milestone: "Marco do mês 3." },
+      },
+    });
+    const contextWithFunnel = JSON.stringify({ funnelAnalysis: { requiredFunnel: { leads: 35 } } });
+    expect(findUngroundedNumbers(plan, contextWithFunnel)).toEqual([]);
+  });
+
+  it("rejeita um número inventado no headline do resumo estratégico — bug real: a mesma 'ponte numérica' encontrada em phaseSummaries também podia aparecer aqui, sem checagem nenhuma até agora", () => {
+    const plan = basePlan({
+      strategicSummary: {
+        ...basePlan().strategicSummary,
+        headline: "Construir um canal que entregue 35 leads qualificados por mês.",
+      },
+    });
+    const findings = findUngroundedNumbers(plan, "{}");
+    expect(findings.some((f) => f.field === "strategicSummary.headline" && f.value === "35")).toBe(true);
+  });
+
   it("não varre blogBrief/richMaterialBrief/paidTrafficBrief (igual a details) — números criativos de copy não travam a validação", () => {
     const plan = basePlan({
       plan90Days: {
@@ -143,6 +203,8 @@ describe("findUngroundedNumbers", () => {
             richMaterialBrief: null,
             paidTrafficBrief: null,
             cadenceBrief: null,
+            landingPageBrief: null,
+            playbookBrief: null,
             suggestedOwner: "Marketing",
             deadline: "Semana 1",
             indicator: "Indicador",
@@ -155,7 +217,7 @@ describe("findUngroundedNumbers", () => {
     expect(findUngroundedNumbers(plan, "{}")).toEqual([]);
   });
 
-  it("não varre cadenceBrief (igual a details) — números soltos na copy da cadência não travam a validação", () => {
+  it("não varre cadenceBrief nem playbookBrief (igual a details) — números soltos ali não travam a validação", () => {
     const plan = basePlan({
       plan90Days: {
         ...basePlan().plan90Days,
@@ -164,15 +226,28 @@ describe("findUngroundedNumbers", () => {
             title: "Cadência de follow-up",
             objective: "Objetivo",
             actionType: "crm_pipeline",
-            details: ["Follow-up em D+2, D+5 e D+10"],
+            details: ["Cadência de 5 dias após proposta"],
             blogBrief: null,
             richMaterialBrief: null,
             paidTrafficBrief: null,
             cadenceBrief: {
-              touchpoints: [
-                { moment: "D+2", channel: "E-mail", copy: "Já são 47 dias sem resposta? Vamos conversar." },
-                { moment: "D+5", channel: "WhatsApp", copy: "99% dos clientes fecham depois desse toque." },
+              days: [
+                { channels: ["email", "whatsapp"], goal: "Retomar a proposta enviada há 47 dias" },
+                { channels: ["phone"], goal: "Mostrar o caso que fechou em 99 dias" },
+                { channels: ["whatsapp"], goal: "Contato" },
+                { channels: ["linkedin"], goal: "Contato" },
+                { channels: ["email"], goal: "Encerrar" },
               ],
+            },
+            landingPageBrief: null,
+            playbookBrief: {
+              steps: [
+                { title: "Listar os 12 melhores clientes", howTo: "x" },
+                { title: "Passo", howTo: "x" },
+                { title: "Passo", howTo: "x" },
+                { title: "Passo", howTo: "x" },
+              ],
+              adoptionTip: "Revisar a cada 45 dias.",
             },
             suggestedOwner: "Vendas",
             deadline: "Semana 1",

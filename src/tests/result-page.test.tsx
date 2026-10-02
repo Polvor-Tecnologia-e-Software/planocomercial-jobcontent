@@ -1,6 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import type { CommercialPlan } from "@/schemas/commercial-plan";
+
 vi.mock("next/navigation", () => ({
   notFound: () => {
     throw new Error("NEXT_NOT_FOUND");
@@ -18,7 +20,7 @@ vi.mock("@/server/actions/get-commercial-plan-pdf-action", () => ({
 
 const { ResultPage } = await import("@/components/result/result-page");
 
-function validPlan(overrides: Record<string, unknown> = {}) {
+function validPlan(overrides: Partial<CommercialPlan> = {}): CommercialPlan {
   return {
     executiveDiagnosis: "A empresa perde oportunidades por falta de critério de qualificação de leads.",
     primaryBottleneck: "conversion",
@@ -40,6 +42,23 @@ function validPlan(overrides: Record<string, unknown> = {}) {
       primaryIndicator: "Indicador",
       timeframe: "30 dias",
     })),
+    strategicSummary: {
+      headline: "Meta do trimestre.",
+      positioning: "Posicionamento.",
+      channelStrategy: "Estratégia de canais.",
+      contentJourney: "Jornada de conteúdo.",
+      mediaBudgetPriority: [
+        { channel: "Google", priority: "alta" },
+        { channel: "Meta", priority: "baixa" },
+      ],
+      commercialProcess: "Processo comercial.",
+      premises: "Premissas.",
+    },
+    phaseSummaries: {
+      days1to30: { goal: "Meta do mês 1.", milestone: "Marco do mês 1." },
+      days31to60: { goal: "Meta do mês 2.", milestone: "Marco do mês 2." },
+      days61to90: { goal: "Meta do mês 3.", milestone: "Marco do mês 3." },
+    },
     plan90Days: {
       days1to30: [
         {
@@ -51,6 +70,8 @@ function validPlan(overrides: Record<string, unknown> = {}) {
           richMaterialBrief: null,
           paidTrafficBrief: null,
           cadenceBrief: null,
+          landingPageBrief: null,
+          playbookBrief: null,
           suggestedOwner: "Marketing",
           deadline: "Semana 2",
           indicator: "Indicador",
@@ -68,6 +89,8 @@ function validPlan(overrides: Record<string, unknown> = {}) {
           richMaterialBrief: null,
           paidTrafficBrief: null,
           cadenceBrief: null,
+          landingPageBrief: null,
+          playbookBrief: null,
           suggestedOwner: "Vendas",
           deadline: "Semana 6",
           indicator: "Indicador",
@@ -85,6 +108,8 @@ function validPlan(overrides: Record<string, unknown> = {}) {
           richMaterialBrief: null,
           paidTrafficBrief: null,
           cadenceBrief: null,
+          landingPageBrief: null,
+          playbookBrief: null,
           suggestedOwner: "Vendas",
           deadline: "Semana 10",
           indicator: "Indicador",
@@ -132,6 +157,7 @@ function completedState(overrides: Record<string, unknown> = {}) {
     status: "completed" as const,
     diagnosticId: "diagnostic-1",
     companyName: "CodeBit",
+    companyWebsite: "codebit.com.br",
     generatedAt: "2026-01-05T00:00:00.000Z",
     plan: validPlan(),
     funnelStages: [CALCULABLE_STAGE, UNCALCULABLE_STAGE],
@@ -205,7 +231,7 @@ describe("ResultPage — relatório completo", () => {
 describe("ResultPage — Oportunidades para a sua empresa (SEO) condicional", () => {
   it("não mostra a seção de SEO quando não há nenhuma oportunidade (sem palavras-chave, ou falha da IA)", () => {
     render(<ResultPage state={completedState({ seoOpportunities: [] })} />);
-    expect(screen.queryByText("Oportunidades para a sua empresa")).not.toBeInTheDocument();
+    expect(screen.queryByText("Palavras-chave para a sua empresa")).not.toBeInTheDocument();
   });
 
   it("mostra a seção de SEO com as palavras-chave quando existem oportunidades", () => {
@@ -224,7 +250,7 @@ describe("ResultPage — Oportunidades para a sua empresa (SEO) condicional", ()
         })}
       />,
     );
-    expect(screen.getByText("Oportunidades para a sua empresa")).toBeInTheDocument();
+    expect(screen.getByText("Palavras-chave para a sua empresa")).toBeInTheDocument();
     expect(screen.getByText("consultoria financeira")).toBeInTheDocument();
   });
 });

@@ -26,7 +26,36 @@ const analysisFieldName = z.enum([
   "main_findings",
 ]);
 
-const confidenceLevel = z.enum(["low", "medium", "high"]);
+/**
+ * Normaliza antes de validar o enum — bug real em produção: sem
+ * `strict: true` nesta chamada (ver comentário em
+ * src/lib/ai/site-analysis.ts sobre por que não dá pra ligar strict aqui
+ * sem migrar os `.default([])` abaixo primeiro), a IA não tem garantia de
+ * respeitar o enum e às vezes escreve uma variante razoável só que fora da
+ * lista exata (maiúscula, em português, com espaço) — isso derrubava a
+ * análise inteira com AiResponseValidationError mesmo a IA tendo acertado
+ * a intenção. Normaliza as variantes mais prováveis pra o valor canônico;
+ * qualquer coisa fora disso continua rejeitada (nunca aceita um valor
+ * realmente inválido).
+ */
+const CONFIDENCE_ALIASES: Record<string, "low" | "medium" | "high"> = {
+  low: "low",
+  baixa: "low",
+  baixo: "low",
+  medium: "medium",
+  média: "medium",
+  media: "medium",
+  médio: "medium",
+  medio: "medium",
+  high: "high",
+  alta: "high",
+  alto: "high",
+};
+
+const confidenceLevel = z.preprocess((value) => {
+  if (typeof value !== "string") return value;
+  return CONFIDENCE_ALIASES[value.trim().toLowerCase()] ?? value;
+}, z.enum(["low", "medium", "high"]));
 
 /**
  * Cada evidência aponta exatamente para onde a informação foi
@@ -38,10 +67,12 @@ export const siteAnalysisEvidenceSchema = z
     field: analysisFieldName,
     page_url: z.url("page_url precisa ser uma URL válida."),
     // Trecho curto — nunca o texto inteiro da página (mantém o registro
-    // compacto e barato em tokens de saída).
-    excerpt: z
-      .string()
-      .max(180, "O trecho de evidência deve ser curto (até 180 caracteres)."),
+    // compacto e barato em tokens de saída). Quando a IA escreve além
+    // desse limite, generateStructuredJson (src/lib/ai/client.ts,
+    // truncateOversizedStrings) já corta ANTES desta validação rodar —
+    // nunca duplicar essa lógica aqui; .max() continua sendo a fonte da
+    // verdade do limite (e o que vira maxLength no JSON Schema da tool).
+    excerpt: z.string().max(180, "O trecho de evidência deve ser curto (até 180 caracteres)."),
     confidence: confidenceLevel,
   })
   .strict();

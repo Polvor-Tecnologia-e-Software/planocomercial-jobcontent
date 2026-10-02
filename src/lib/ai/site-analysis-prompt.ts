@@ -7,7 +7,7 @@
  */
 
 /** Bump ao alterar o system prompt, o user prompt ou o schema. */
-export const SITE_ANALYSIS_PROMPT_VERSION = "site-analysis-v2";
+export const SITE_ANALYSIS_PROMPT_VERSION = "site-analysis-v3";
 
 export const SITE_ANALYSIS_TOOL_NAME = "submit_site_analysis";
 export const SITE_ANALYSIS_TOOL_DESCRIPTION =
@@ -20,6 +20,7 @@ Regras:
 - Nunca invente: sem evidência, use null (ou lista vazia). Nunca presuma segmento, público-alvo ou modelo comercial sem evidência textual.
 - Ignore menus, rodapés, textos repetidos e páginas sem conteúdo comercial (institucional vazio, aviso de cookies, erro 404).
 - Para cada inferência, registre uma evidência: campo, URL exata da página, trecho curto (até ~20 palavras) e confiança (low/medium/high).
+- O campo "confidence" (fora do array de evidências) é a confiança GERAL desta análise como um todo — sempre em inglês minúsculo, EXATAMENTE "low", "medium" ou "high" (nunca um valor traduzido, maiúsculo ou fora dessas três opções): "high" quando o site tem conteúdo comercial claro e extenso, "medium" quando faltam algumas informações, "low" quando o site tem pouquíssimo conteúdo aproveitável.
 - Responda chamando a tool fornecida. Não use markdown, não escreva texto fora da tool, não adicione campos além dos definidos no schema da tool.`;
 
 export function buildSiteAnalysisUserPrompt(combinedText: string): string {

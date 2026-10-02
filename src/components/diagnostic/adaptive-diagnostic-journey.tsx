@@ -11,6 +11,7 @@ import {
   computeProgress,
   findNextQuestion,
   getApplicableRoute,
+  getProjectedRoute,
   toAnswerMap,
   type AnswerMap,
   type RouteQuestion,
@@ -60,9 +61,13 @@ export function AdaptiveDiagnosticJourney({
   const [completing, setCompleting] = useState(currentKey === null);
 
   const route = useMemo(() => getApplicableRoute(challenge, answers), [challenge, answers]);
-  const progress = useMemo(() => computeProgress(route, answers), [route, answers]);
+  // Numeração e progresso usam a rota PREVISTA (total estável desde a 1ª
+  // pergunta) — ver getProjectedRoute. A navegação continua na rota aplicável.
+  const projectedRoute = useMemo(() => getProjectedRoute(challenge, answers), [challenge, answers]);
+  const progress = useMemo(() => computeProgress(projectedRoute, answers), [projectedRoute, answers]);
   const currentIndex = currentKey ? route.findIndex((item) => item.key === currentKey) : -1;
   const currentItem: RouteQuestion | null = currentIndex >= 0 ? route[currentIndex] : null;
+  const currentNumber = currentKey ? projectedRoute.findIndex((item) => item.key === currentKey) + 1 : 0;
   const canGoBack = currentIndex > 0;
 
   // Ao trocar de pergunta (avançar, voltar, ou editar), recarrega o
@@ -146,7 +151,7 @@ export function AdaptiveDiagnosticJourney({
             <CardHeader className="gap-2">
               <CardTitle className="text-xl sm:text-2xl">{currentItem.question.prompt}</CardTitle>
               <CardDescription>
-                Pergunta {currentIndex + 1} de {progress.totalCount}
+                Pergunta {currentNumber} de {progress.totalCount}
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-5">

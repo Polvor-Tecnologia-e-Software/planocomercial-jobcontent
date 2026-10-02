@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-import { isFreeEmailDomain } from "@/lib/validation/free-email-providers";
-
 /**
  * Converte um valor de FormData (string | null) em string, tratando
  * ausência de campo como string vazia. Usado como preprocess para que
@@ -43,18 +41,6 @@ function isValidWebsite(value: string): boolean {
   } catch {
     return false;
   }
-}
-
-/**
- * Valida um telefone brasileiro de forma tolerante: aceita com ou sem
- * máscara — só confere que sobram 10 ou 11 dígitos depois de remover tudo
- * que não é número (DDD + fixo de 8 dígitos, ou DDD + celular de 9
- * dígitos). A máscara em si é aplicada no cliente (ver capture-form.tsx);
- * aqui só validamos o valor final recebido.
- */
-function isValidBrazilianPhone(value: string): boolean {
-  const digits = value.replace(/\D/g, "");
-  return digits.length === 10 || digits.length === 11;
 }
 
 /**
@@ -112,32 +98,14 @@ export const startDiagnosticSchema = z.object({
       .optional(),
   ),
 
+  // Qualquer e-mail válido — inclusive pessoal (Gmail, Hotmail etc.).
   email: z.preprocess(
     toStringOrEmpty,
     z
       .string()
       .trim()
-      .min(1, "Informe seu e-mail corporativo.")
-      .email("Informe um e-mail válido (ex.: voce@suaempresa.com.br).")
-      .refine(
-        (value) => !isFreeEmailDomain(value),
-        "Informe um e-mail corporativo — não aceitamos e-mails pessoais (Gmail, Yahoo, Hotmail, etc.).",
-      ),
-  ),
-
-  // Opcional — nem toda pessoa quer compartilhar telefone. Quando
-  // informado, precisa ter DDD + número (10 ou 11 dígitos). Enviado ao
-  // RD Station como mobile_phone (ver src/server/send-rd-station-conversion.ts).
-  phone: z.preprocess(
-    (value) => emptyToUndefined(toStringOrEmpty(value)),
-    z
-      .string()
-      .max(20, "Esse telefone está muito longo.")
-      .refine(
-        isValidBrazilianPhone,
-        "Informe um telefone válido com DDD (ex.: (11) 98765-4321) ou deixe em branco.",
-      )
-      .optional(),
+      .min(1, "Informe seu e-mail.")
+      .email("Informe um e-mail válido (ex.: voce@email.com.br)."),
   ),
 
   // Palavras-chave que resumem o negócio (5 a 10) — usadas pela IA como

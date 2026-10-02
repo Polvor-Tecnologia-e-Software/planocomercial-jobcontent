@@ -167,6 +167,46 @@ export function getApplicableRoute(
     .map(({ question, adaptive }) => ({ key: question.key, question, adaptive }));
 }
 
+/**
+ * A regra ainda PODE valer: ou já vale, ou depende de uma pergunta ainda
+ * sem resposta (qualquer que seja o valor esperado). Só devolve false
+ * quando as respostas que a regra olha já foram dadas e não a satisfazem.
+ */
+function mayStillShow(rule: DisplayRule, answers: AnswerMap): boolean {
+  if (evaluateDisplayRule(rule, answers)) return true;
+
+  if (isLegacyDisplayRule(rule)) return !hasAnyValue(answers[rule.showAfterKey]);
+  if (isDisplayRuleGroup(rule)) {
+    if ("and" in rule) return rule.and.every((sub) => mayStillShow(sub, answers));
+    return rule.or.some((sub) => mayStillShow(sub, answers));
+  }
+  return !hasAnyValue(answers[rule.questionKey]);
+}
+
+/**
+ * Rota PREVISTA — usada só para numerar ("Pergunta X de Y") e medir o
+ * progresso, nunca para decidir o que perguntar (isso continua sendo
+ * getApplicableRoute). Bug real: o total mostrado contava só as perguntas
+ * já liberadas, então crescia no meio da jornada (ex.: D2 começava em
+ * "de 11", virava "de 12" depois de U1 e "de 13" depois de D2_Q1, e D1
+ * mostrava "12 de 12" e ainda vinha mais uma). Aqui toda pergunta que
+ * ainda pode aparecer entra no total desde o início: o total nunca
+ * aumenta — no máximo diminui, logo depois da resposta que descarta uma
+ * pergunta condicional (ex.: D2_Q3 sai se D2_Q1 não for "existe, mas não
+ * é seguido").
+ */
+export function getProjectedRoute(
+  challenge: SelectedChallenge,
+  answers: AnswerMap,
+): readonly RouteQuestion[] {
+  return getDeterministicQuestionRoute(challenge)
+    .filter(({ question, adaptive }) => {
+      if (!adaptive) return true;
+      return mayStillShow((question as AdaptiveChallengeQuestion).displayRule, answers);
+    })
+    .map(({ question, adaptive }) => ({ key: question.key, question, adaptive }));
+}
+
 export function isQuestionAnswered(value: string | number | undefined): boolean {
   return hasAnyValue(value);
 }

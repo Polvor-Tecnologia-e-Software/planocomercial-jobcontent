@@ -41,7 +41,25 @@ export async function analyzeSiteContent(
     schema: siteAnalysisResultSchema,
     toolName: SITE_ANALYSIS_TOOL_NAME,
     toolDescription: SITE_ANALYSIS_TOOL_DESCRIPTION,
-    maxTokens: 1200,
+    // 1200 bastava com o modelo anterior, mas AI_MODEL (.env.local) é
+    // global a todas as chamadas de IA do app — a troca para
+    // "gpt-4.1-mini" (mais verboso, ver MAX_OUTPUT_TOKENS em
+    // commercial-plan.ts) fazia a resposta da tool call estourar esse
+    // limite e cortar no meio do JSON, gerando
+    // AiResponseValidationError("A resposta da IA não é um JSON
+    // válido.") mesmo com a chamada tendo ido bem — era truncamento, não
+    // um erro de schema. 3000 dá margem confortável pro schema atual
+    // (~14 campos, vários arrays de string + lista de evidências).
+    maxTokens: 3000,
+    // Sem strict:true de propósito (diferente de commercial-plan.ts e
+    // seo-keywords.ts): siteAnalysisResultSchema tem vários campos
+    // `.array(...).default([])`, e o modo Structured Outputs da OpenAI
+    // rejeita a chamada inteira (erro 400) se algum campo não for
+    // obrigatório/`.nullable()` — migrar pra `.nullable()` exigiria também
+    // ajustar todo consumidor que hoje assume array nunca nulo (ver
+    // site-analysis-confirmation.tsx). Por não ter strict, o enum de
+    // confidence não é garantido pela API — ver a normalização em
+    // site-analysis-schema.ts (CONFIDENCE_ALIASES) que cobre esse gap.
   });
 
   return {

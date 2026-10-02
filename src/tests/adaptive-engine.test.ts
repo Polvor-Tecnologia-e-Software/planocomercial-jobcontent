@@ -6,6 +6,7 @@ import {
   findNextQuestion,
   findQuestionInChallenge,
   getApplicableRoute,
+  getProjectedRoute,
   toAnswerMap,
   validateAnswerValue,
   type AnswerMap,
@@ -286,5 +287,56 @@ describe("toAnswerMap", () => {
   it("ignora valores que não são string nem number (defesa contra dado inconsistente no banco)", () => {
     expect(toAnswerMap([{ question_key: "x", answer_value: { nested: true } }])).toEqual({});
     expect(toAnswerMap([{ question_key: "y", answer_value: null }])).toEqual({});
+  });
+});
+
+/**
+ * Simula a jornada inteira do jeito que a tela faz (próxima pergunta da rota
+ * aplicável, numerada pela rota prevista), respondendo com `pick` em cada
+ * single_select. Devolve o total ("de Y") visto em cada pergunta.
+ */
+function walkTotals(challenge: (typeof CHALLENGE_ORDER)[number], pick: (key: string, values: string[]) => string) {
+  const answers: AnswerMap = {};
+  const totals: number[] = [];
+  for (let step = 0; step < 50; step++) {
+    const next = findNextQuestion(getApplicableRoute(challenge, answers), answers);
+    if (!next) break;
+    const projected = getProjectedRoute(challenge, answers);
+    totals.push(projected.length);
+    expect(projected.findIndex((item) => item.key === next.key)).toBe(step);
+    const question = next.question;
+    answers[next.key] =
+      question.type === "single_select"
+        ? pick(next.key, (question.options ?? []).map((option) => option.value))
+        : question.type === "text"
+          ? "texto"
+          : 10;
+  }
+  return { totals, answers };
+}
+
+describe("getProjectedRoute — numeração estável ('Pergunta X de Y')", () => {
+  it.each(CHALLENGE_ORDER)("%s: o total nunca aumenta no meio da jornada e a numeração é sequencial", (challenge) => {
+    for (const pick of [(_: string, values: string[]) => values[0], (_: string, values: string[]) => values[values.length - 1]]) {
+      const { totals, answers } = walkTotals(challenge, pick);
+      for (let i = 1; i < totals.length; i++) {
+        expect(totals[i]).toBeLessThanOrEqual(totals[i - 1]);
+      }
+      const finalProgress = computeProgress(getProjectedRoute(challenge, answers), answers);
+      expect(finalProgress.percent).toBe(100);
+    }
+  });
+
+  it("conta desde a 1ª pergunta as adaptativas que ainda podem aparecer (D2: 11 universais + 3)", () => {
+    expect(getProjectedRoute("D2", {})).toHaveLength(14);
+  });
+
+  it("tira do total a pergunta condicional assim que a resposta que a dispararia não a dispara", () => {
+    const base: AnswerMap = { U1: 5000, U2: 30, U3: 2 };
+    expect(getProjectedRoute("D2", base).some((item) => item.key === "D2_Q3")).toBe(true);
+    expect(getProjectedRoute("D2", { ...base, D2_Q1: "sim" }).some((item) => item.key === "D2_Q3")).toBe(false);
+    expect(getProjectedRoute("D2", { ...base, D2_Q1: "existe_nao_seguido" }).some((item) => item.key === "D2_Q3")).toBe(
+      true,
+    );
   });
 });

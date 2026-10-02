@@ -10,7 +10,7 @@ Implementado até agora:
   entregáveis + fechamento (`promise/closing-section.tsx`). Fonte
   Montserrat, escopada só a esta tela (ver comentário no topo de
   `globals.css`, seção "Tela inicial").
-- `capture-form.tsx` — primeira captura (empresa, site, e-mail corporativo).
+- `capture-form.tsx` — primeira captura (nome, empresa, site, e-mail — qualquer e-mail válido, pessoal ou corporativo — e palavras-chave). Sem telefone.
 - `site-analysis-confirmation.tsx` / `site-analysis-fallback.tsx` — confirmação/edição/rejeição da análise automática do site.
 - `challenge-selection.tsx` — escolha do desafio principal.
 - `adaptive-diagnostic-journey.tsx` — jornada adaptativa de perguntas.

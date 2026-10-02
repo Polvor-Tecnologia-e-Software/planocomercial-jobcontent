@@ -16,6 +16,21 @@ function makePriority(overrides: Partial<Priority> = {}): Priority {
   };
 }
 
+describe("PrioritiesSection — layout de referência", () => {
+  it("mostra o selo numerado, o título e a linha de indicador/prazo por prioridade", () => {
+    render(
+      <PrioritiesSection
+        priorities={[makePriority({ primaryIndicator: "Leads novos/mês", timeframe: "90 dias" })]}
+      />,
+    );
+
+    expect(screen.getByText("03 · Prioridades")).toBeInTheDocument();
+    expect(screen.getByText("As três decisões que mais movem o resultado")).toBeInTheDocument();
+    expect(screen.getByText("Leads novos/mês")).toBeInTheDocument();
+    expect(screen.getByText("90 dias")).toBeInTheDocument();
+  });
+});
+
 describe("PrioritiesSection — CTA de WhatsApp por prioridade", () => {
   it("cada prioridade tem um link de WhatsApp mencionando o título dela", () => {
     render(
