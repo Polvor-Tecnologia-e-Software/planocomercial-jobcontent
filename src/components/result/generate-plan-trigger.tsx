@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
+import { PlanGenerationProgress } from "@/components/result/plan-generation-progress";
 import { Button } from "@/components/ui/button";
 import { generateCommercialPlanAction } from "@/server/actions/generate-commercial-plan-action";
 
@@ -43,10 +44,18 @@ export function GeneratePlanTrigger({ diagnosticId, label }: GeneratePlanTrigger
     });
   }
 
+  if (isPending) {
+    return (
+      <div className="w-full text-left">
+        <PlanGenerationProgress />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center gap-3">
-      <Button size="lg" onClick={handleClick} disabled={isPending} aria-busy={isPending}>
-        {isPending ? "Gerando seu plano..." : label}
+      <Button size="lg" onClick={handleClick}>
+        {label}
       </Button>
       {error ? (
         <p role="alert" className="text-destructive text-center text-sm">

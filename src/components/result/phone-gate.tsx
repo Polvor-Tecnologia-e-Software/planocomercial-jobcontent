@@ -7,6 +7,7 @@ import { Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PlanGenerationProgress } from "@/components/result/plan-generation-progress";
 import { formatBrazilianPhone } from "@/lib/validation/phone";
 import { generateCommercialPlanAction } from "@/server/actions/generate-commercial-plan-action";
 import { saveLeadPhoneAction } from "@/server/actions/save-lead-phone-action";
@@ -31,6 +32,8 @@ export function PhoneGate({ diagnosticId, companyName, needsGeneration }: PhoneG
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  // Só depois do telefone salvo — um telefone inválido nunca pisca a tela de progresso.
+  const [generating, setGenerating] = useState(false);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -45,6 +48,7 @@ export function PhoneGate({ diagnosticId, companyName, needsGeneration }: PhoneG
         return;
       }
       if (needsGeneration) {
+        setGenerating(true);
         // O resultado não é tratado aqui de propósito: depois do refresh,
         // a página mostra o plano pronto ou o estado de falha com "Tentar
         // novamente" — o telefone já está salvo nos dois casos.
@@ -52,6 +56,22 @@ export function PhoneGate({ diagnosticId, companyName, needsGeneration }: PhoneG
       }
       router.refresh();
     });
+  }
+
+  if (generating) {
+    return (
+      <div className="mx-auto flex w-full max-w-xl flex-1 flex-col justify-center py-10 sm:py-16">
+        <div className="shadow-lift flex flex-col gap-6 rounded-2xl bg-white p-6 sm:p-9">
+          <div className="flex flex-col gap-2 text-center">
+            <span className="text-brand-blue text-[12px] font-bold tracking-wide uppercase">Quase lá</span>
+            <h1 className="text-brand-navy-900 text-2xl leading-tight font-extrabold sm:text-3xl">
+              Montando o diagnóstico + plano da {companyName}
+            </h1>
+          </div>
+          <PlanGenerationProgress />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -99,18 +119,8 @@ export function PhoneGate({ diagnosticId, companyName, needsGeneration }: PhoneG
             aria-busy={isPending}
             className="h-16 w-full rounded-2xl text-lg font-extrabold"
           >
-            {isPending
-              ? needsGeneration
-                ? "Gerando seu diagnóstico..."
-                : "Liberando..."
-              : "Ver meu diagnóstico completo"}
+            {isPending ? "Liberando..." : "Ver meu diagnóstico completo"}
           </Button>
-
-          {isPending && needsGeneration ? (
-            <p role="status" className="text-muted-foreground text-center text-sm">
-              Estamos montando seu plano de 90 dias. Isso pode levar até um minuto — não feche esta página.
-            </p>
-          ) : null}
 
           {formError ? (
             <p role="alert" className="text-destructive text-center text-sm">

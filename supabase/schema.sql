@@ -125,6 +125,12 @@ create table leads (
   utm_campaign      text,
   utm_content       text,
   utm_term          text,
+  -- Cookies do código de monitoramento da RD Station, lidos no envio do
+  -- formulário inicial: __trf.src (origem da visita) e _rdtrk (id de
+  -- rastreamento). Enviados nas conversões como traffic_source e
+  -- client_tracking_id — ver src/lib/rd-station/payload.ts.
+  rd_traffic_source       text,
+  rd_client_tracking_id   text,
   created_at        timestamptz not null default now(),
   updated_at        timestamptz not null default now()
 );

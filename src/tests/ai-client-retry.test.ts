@@ -320,3 +320,128 @@ describe("generateStructuredJson — retry limitado em falhas de transporte", ()
     ).rejects.toThrow(AiCallError);
   }, 10_000);
 });
+
+/** Simula o stream do SDK: um iterável assíncrono de chunks com os argumentos da tool em pedaços. */
+function streamOf(argumentsText: string, toolName = "test_tool") {
+  const half = Math.ceil(argumentsText.length / 2);
+  const chunks = [
+    { choices: [{ delta: { tool_calls: [{ index: 0, function: { name: toolName, arguments: argumentsText.slice(0, half) } }] } }] },
+    { choices: [{ delta: { tool_calls: [{ index: 0, function: { arguments: argumentsText.slice(half) } }] }, finish_reason: "stop" }] },
+    { choices: [], usage: { prompt_tokens: 12, completion_tokens: 7 } },
+  ];
+  return {
+    async *[Symbol.asyncIterator]() {
+      for (const chunk of chunks) yield chunk;
+    },
+  };
+}
+
+function hangUntilAborted() {
+  return (_params: unknown, options: { signal: AbortSignal }) =>
+    new Promise((_resolve, reject) => {
+      // Igual ao SDK real: cancela com um erro que NÃO se chama "AbortError".
+      options.signal.addEventListener("abort", () => reject(new Error("Request was aborted.")));
+    });
+}
+
+describe("generateStructuredJson — streaming e regras de repetição para chamadas longas", () => {
+  it("com stream: pede stream + uso de tokens e junta os pedaços dos argumentos", async () => {
+    createCompletion.mockResolvedValueOnce(streamOf(JSON.stringify({ ok: true })));
+
+    const result = await generateStructuredJson({
+      system: "s",
+      userPrompt: "u",
+      schema: SCHEMA,
+      toolName: "test_tool",
+      toolDescription: "d",
+      stream: true,
+    });
+
+    expect(result.data).toEqual({ ok: true });
+    expect(result.inputTokens).toBe(12);
+    expect(result.outputTokens).toBe(7);
+    const callArgs = createCompletion.mock.calls[0][0];
+    expect(callArgs.stream).toBe(true);
+    expect(callArgs.stream_options).toEqual({ include_usage: true });
+  });
+
+  it("com stream: tool diferente da pedida é tratada como resposta inválida", async () => {
+    createCompletion.mockResolvedValueOnce(streamOf(JSON.stringify({ ok: true }), "outra_tool"));
+
+    await expect(
+      generateStructuredJson({ system: "s", userPrompt: "u", schema: SCHEMA, toolName: "test_tool", toolDescription: "d", stream: true }),
+    ).rejects.toThrow(AiResponseValidationError);
+  });
+
+  it("reconhece o timeout pelo próprio cronômetro, mesmo com o erro de cancelamento do SDK (não 'AbortError')", async () => {
+    createCompletion.mockImplementation(hangUntilAborted());
+
+    await expect(
+      generateStructuredJson({ system: "s", userPrompt: "u", schema: SCHEMA, toolName: "test_tool", toolDescription: "d", timeoutMs: 50, maxRetries: 0 }),
+    ).rejects.toThrow("A chamada de IA excedeu o tempo limite.");
+  }, 10_000);
+
+  it("retryOnTimeout: false — não repete quando estoura o tempo (1 chamada só)", async () => {
+    createCompletion.mockImplementation(hangUntilAborted());
+
+    await expect(
+      generateStructuredJson({
+        system: "s",
+        userPrompt: "u",
+        schema: SCHEMA,
+        toolName: "test_tool",
+        toolDescription: "d",
+        timeoutMs: 50,
+        maxRetries: 1,
+        retryOnTimeout: false,
+      }),
+    ).rejects.toThrow(AiCallError);
+    expect(createCompletion).toHaveBeenCalledTimes(1);
+  }, 10_000);
+
+  it("retryOnlyIfFailedWithinMs: repete uma falha rápida (ex.: 503 imediato)", async () => {
+    createCompletion
+      .mockRejectedValueOnce(new MockAPIError(503, "indisponível"))
+      .mockResolvedValueOnce(toolResponse({ ok: true }));
+
+    const result = await generateStructuredJson({
+      system: "s",
+      userPrompt: "u",
+      schema: SCHEMA,
+      toolName: "test_tool",
+      toolDescription: "d",
+      maxRetries: 1,
+      retryOnlyIfFailedWithinMs: 30_000,
+    });
+
+    expect(result.data).toEqual({ ok: true });
+    expect(createCompletion).toHaveBeenCalledTimes(2);
+  }, 10_000);
+
+  it("retryOnlyIfFailedWithinMs: não repete uma falha que demorou mais que o limite", async () => {
+    createCompletion.mockImplementationOnce(
+      () => new Promise((_resolve, reject) => setTimeout(() => reject(new MockAPIError(503, "indisponível")), 60)),
+    );
+
+    await expect(
+      generateStructuredJson({
+        system: "s",
+        userPrompt: "u",
+        schema: SCHEMA,
+        toolName: "test_tool",
+        toolDescription: "d",
+        maxRetries: 1,
+        retryOnlyIfFailedWithinMs: 10,
+      }),
+    ).rejects.toThrow(AiCallError);
+    expect(createCompletion).toHaveBeenCalledTimes(1);
+  }, 10_000);
+
+  it("a mensagem de falha traz o motivo real (status HTTP e mensagem do SDK)", async () => {
+    createCompletion.mockRejectedValueOnce(new MockAPIError(400, "Invalid schema"));
+
+    await expect(
+      generateStructuredJson({ system: "s", userPrompt: "u", schema: SCHEMA, toolName: "test_tool", toolDescription: "d", maxRetries: 0 }),
+    ).rejects.toThrow("Falha na chamada de IA (HTTP 400 APIError: Invalid schema).");
+  });
+});

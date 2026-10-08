@@ -80,6 +80,8 @@ describe("startDiagnostic", () => {
       utm_campaign: null,
       utm_content: null,
       utm_term: null,
+      rd_traffic_source: null,
+      rd_client_tracking_id: null,
     });
 
     expect(createDiagnostic).toHaveBeenCalledWith({

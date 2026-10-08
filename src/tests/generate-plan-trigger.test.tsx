@@ -53,7 +53,7 @@ describe("GeneratePlanTrigger", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/limite de tentativas/);
   });
 
-  it("desabilita o botão e mostra texto de carregamento enquanto pendente", async () => {
+  it("troca o botão pela tela de progresso com etapas enquanto pendente (sem permitir novo clique)", async () => {
     let resolveAction: (value: { ok: true }) => void = () => {};
     generateCommercialPlanAction.mockReturnValue(
       new Promise((resolve) => {
@@ -65,7 +65,9 @@ describe("GeneratePlanTrigger", () => {
     render(<GeneratePlanTrigger diagnosticId="diagnostic-1" label="Gerar meu plano comercial" />);
     await user.click(screen.getByRole("button", { name: "Gerar meu plano comercial" }));
 
-    expect(screen.getByRole("button", { name: "Gerando seu plano..." })).toBeDisabled();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Progresso da geração do plano" })).toBeInTheDocument();
+    expect(screen.getByText("Analisando o seu funil comercial")).toBeInTheDocument();
 
     resolveAction({ ok: true });
   });

@@ -32,7 +32,7 @@ export function GeneratingState({ companyName }: { companyName: string }) {
         <CardHeader className="gap-2">
           <CardTitle className="text-xl sm:text-2xl">Gerando o plano de {companyName}...</CardTitle>
           <CardDescription>
-            Isso pode levar até um minuto. Você pode atualizar esta página em instantes.
+            Isso pode levar de 1 a 2 minutos. Você pode atualizar esta página em instantes.
           </CardDescription>
         </CardHeader>
       </Card>

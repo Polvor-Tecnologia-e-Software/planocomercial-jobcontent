@@ -30,6 +30,11 @@ export type StartDiagnosticInput = {
     content?: string;
     term?: string;
   };
+  /** Cookies do código de monitoramento da RD (__trf.src e _rdtrk), quando presentes no navegador. */
+  rdTracking?: {
+    trafficSource?: string;
+    clientTrackingId?: string;
+  };
 };
 
 /**
@@ -69,6 +74,8 @@ export async function startDiagnostic(
     utm_campaign: input.utm?.campaign ?? null,
     utm_content: input.utm?.content ?? null,
     utm_term: input.utm?.term ?? null,
+    rd_traffic_source: input.rdTracking?.trafficSource ?? null,
+    rd_client_tracking_id: input.rdTracking?.clientTrackingId ?? null,
   });
 
   // Consentimento LGPD (implícito, ver LGPD_CONSENT_VERSION acima) — sem

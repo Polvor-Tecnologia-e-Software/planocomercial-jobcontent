@@ -168,10 +168,7 @@ export function CaptureForm() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label htmlFor="website">
-                Site da empresa{" "}
-                <span className="text-muted-foreground font-normal">(opcional)</span>
-              </Label>
+              <Label htmlFor="website">Site da empresa</Label>
               <Input
                 id="website"
                 name="website"

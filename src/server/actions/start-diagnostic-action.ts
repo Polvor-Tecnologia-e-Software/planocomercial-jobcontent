@@ -1,11 +1,24 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 
 import { DatabaseError } from "@/lib/database";
+import { RD_TRACKING_COOKIES } from "@/lib/rd-station/config";
 import { checkRateLimit, getClientIp } from "@/lib/security/rate-limit";
 import { startDiagnosticSchema } from "@/lib/validation/start-diagnostic";
+import { sendRdStationCaptureConversion } from "@/server/send-rd-station-conversion";
 import { startDiagnostic } from "@/server/start-diagnostic";
+import { readStoredUtmParams, withStoredUtm } from "@/server/utm";
+
+/** Valor de cookie da RD aceito para gravar: texto curto, sem quebra de linha — nunca confia no navegador. */
+function readTrackingCookie(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  if (trimmed === "" || trimmed.length > 500 || /[\r\n]/.test(trimmed)) return undefined;
+  return trimmed;
+}
 
 /** No máximo 5 novos diagnósticos por IP a cada 10 minutos (seção 19 do BRD:
  * limitar abuso do formulário público, que dispara custo de IA e de crawl). */
@@ -91,6 +104,25 @@ export async function startDiagnosticAction(
 
   let diagnosticId: string;
 
+  // Cookies do código de monitoramento da RD (instalado via GTM). Ausentes
+  // quando o script não está no site — aí a origem vai pelos UTMs.
+  const cookieStore = await cookies();
+  const rdTracking = {
+    trafficSource: readTrackingCookie(cookieStore.get(RD_TRACKING_COOKIES.trafficSource)?.value),
+    clientTrackingId: readTrackingCookie(cookieStore.get(RD_TRACKING_COOKIES.clientTrackingId)?.value),
+  };
+
+  // UTMs: os do formulário (URL atual); sem nenhum, os guardados no cookie
+  // de sessão desde a primeira página (ver src/lib/utm.ts).
+  const formHasUtm = [
+    parsed.data.utmSource,
+    parsed.data.utmMedium,
+    parsed.data.utmCampaign,
+    parsed.data.utmContent,
+    parsed.data.utmTerm,
+  ].some(Boolean);
+  const storedUtm = formHasUtm ? {} : await readStoredUtmParams();
+
   try {
     const diagnostic = await startDiagnostic({
       name: parsed.data.name,
@@ -98,13 +130,22 @@ export async function startDiagnosticAction(
       website: parsed.data.website,
       email: parsed.data.email,
       keywords: parsed.data.keywords,
-      utm: {
-        source: parsed.data.utmSource,
-        medium: parsed.data.utmMedium,
-        campaign: parsed.data.utmCampaign,
-        content: parsed.data.utmContent,
-        term: parsed.data.utmTerm,
-      },
+      utm: formHasUtm
+        ? {
+            source: parsed.data.utmSource,
+            medium: parsed.data.utmMedium,
+            campaign: parsed.data.utmCampaign,
+            content: parsed.data.utmContent,
+            term: parsed.data.utmTerm,
+          }
+        : {
+            source: storedUtm.utm_source,
+            medium: storedUtm.utm_medium,
+            campaign: storedUtm.utm_campaign,
+            content: storedUtm.utm_content,
+            term: storedUtm.utm_term,
+          },
+      rdTracking,
     });
 
     diagnosticId = diagnostic.id;
@@ -122,7 +163,21 @@ export async function startDiagnosticAction(
     return { status: "error", formError };
   }
 
+  // Conversão "captura" na RD — depois da resposta (after), para nunca
+  // atrasar o redirecionamento nem quebrar a jornada se a RD falhar.
+  const capturedDiagnosticId = diagnosticId;
+  after(async () => {
+    try {
+      await sendRdStationCaptureConversion(capturedDiagnosticId);
+    } catch (error) {
+      console.error(
+        "[start-diagnostic-action] Falha inesperada ao enviar conversão de captura à RD:",
+        error instanceof Error ? error.message : error,
+      );
+    }
+  });
+
   // redirect() lança um sinal especial do Next.js — precisa ficar fora
   // do try/catch acima, senão o catch o interpretaria como um erro real.
-  redirect(`/diagnostico/${diagnosticId}`);
+  redirect(await withStoredUtm(`/diagnostico/${diagnosticId}`));
 }

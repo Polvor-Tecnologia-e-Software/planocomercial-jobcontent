@@ -2,6 +2,8 @@
 
 import { redirect } from "next/navigation";
 
+import { withStoredUtm } from "@/server/utm";
+
 import {
   continueWithoutSiteAnalysis,
   type ContinueWithoutSiteAnalysisReason,
@@ -33,7 +35,7 @@ export async function continueWithoutAnalysisAction(formData: FormData): Promise
   const siteAnalysisId = formData.get("siteAnalysisId");
 
   if (!diagnosticId) {
-    redirect("/diagnostico");
+    redirect(await withStoredUtm("/diagnostico"));
   }
 
   try {
@@ -43,8 +45,8 @@ export async function continueWithoutAnalysisAction(formData: FormData): Promise
       siteAnalysisId: typeof siteAnalysisId === "string" ? siteAnalysisId : null,
     });
   } catch {
-    redirect(`/diagnostico/${diagnosticId}?analysisError=1`);
+    redirect(await withStoredUtm(`/diagnostico/${diagnosticId}?analysisError=1`));
   }
 
-  redirect(`/diagnostico/${diagnosticId}`);
+  redirect(await withStoredUtm(`/diagnostico/${diagnosticId}`));
 }

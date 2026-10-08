@@ -80,6 +80,13 @@ export async function generateCommercialPlanContent(context: AIContext): Promise
     // perfeitamente disponível. 180s dá margem real pro tamanho desta
     // chamada específica.
     timeoutMs: 180_000,
+    // Geração longa (~50-60s): streaming mantém a conexão ativa (quedas de
+    // conexão em chamadas longas viravam "Falha na chamada de IA" e
+    // exigiam "Tentar novamente"); sem repetir no timeout (dobraria a
+    // espera para 6 min); repetição automática só de falha rápida.
+    stream: true,
+    retryOnTimeout: false,
+    retryOnlyIfFailedWithinMs: 30_000,
   });
 
   // Garante 2 posts de blog por mês (regra fixa do produto) — o modelo às

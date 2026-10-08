@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
 import { Inter, Montserrat, Plus_Jakarta_Sans } from "next/font/google";
+import Script from "next/script";
+import { Suspense } from "react";
+
+import { UtmPersistence } from "@/components/analytics/utm-persistence";
 import "./globals.css";
+
+/** Google Tag Manager — no layout raiz para valer em todas as páginas. */
+const GTM_ID = "GTM-KLL6J82W";
 
 // Fontes da identidade visual Job Content: Plus Jakarta Sans (títulos) e
 // Inter (texto), via next/font/google — os arquivos são baixados uma
@@ -50,7 +57,30 @@ export default function RootLayout({
       lang="pt-BR"
       className={`${inter.variable} ${plusJakartaSans.variable} ${montserrat.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col">{children}</body>
+      <head>
+        <Script id="gtm" strategy="afterInteractive">
+          {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','${GTM_ID}');`}
+        </Script>
+      </head>
+      <body className="flex min-h-full flex-col">
+        <noscript>
+          <iframe
+            src={`https://www.googletagmanager.com/ns.html?id=${GTM_ID}`}
+            height="0"
+            width="0"
+            style={{ display: "none", visibility: "hidden" }}
+          />
+        </noscript>
+        {/* useSearchParams exige Suspense; o fallback é nada (o componente não desenha). */}
+        <Suspense fallback={null}>
+          <UtmPersistence />
+        </Suspense>
+        {children}
+      </body>
     </html>
   );
 }

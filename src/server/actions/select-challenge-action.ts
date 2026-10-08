@@ -2,6 +2,8 @@
 
 import { redirect } from "next/navigation";
 
+import { withStoredUtm } from "@/server/utm";
+
 import { CHALLENGES } from "@/lib/challenges/challenge-config";
 import { selectChallenge } from "@/server/select-challenge";
 import type { SelectedChallenge } from "@/types/tables";
@@ -20,14 +22,14 @@ export async function selectChallengeAction(formData: FormData): Promise<void> {
   const challenge = formData.get("selectedChallenge");
 
   if (!diagnosticId || !isSelectedChallenge(challenge)) {
-    redirect(`/diagnostico/${diagnosticId}?challengeError=1`);
+    redirect(await withStoredUtm(`/diagnostico/${diagnosticId}?challengeError=1`));
   }
 
   try {
     await selectChallenge({ diagnosticId, challenge });
   } catch {
-    redirect(`/diagnostico/${diagnosticId}?challengeError=1`);
+    redirect(await withStoredUtm(`/diagnostico/${diagnosticId}?challengeError=1`));
   }
 
-  redirect(`/diagnostico/${diagnosticId}`);
+  redirect(await withStoredUtm(`/diagnostico/${diagnosticId}`));
 }

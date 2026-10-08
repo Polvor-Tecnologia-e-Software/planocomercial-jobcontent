@@ -12,11 +12,45 @@ código).
 
 Código em `src/lib/rd-station/` (endpoint, mapeamento de campos, payload,
 chamada HTTP) e `src/server/send-rd-station-conversion.ts` (orquestração:
-consentimento, idempotência, retry). Disparada a partir de
-`src/server/actions/generate-commercial-plan-action.ts`, assim que o
-plano comercial de 90 dias termina de ser gerado (ou reaproveitado do
-cache) — nunca a cada etapa do questionário, e nunca bloqueia a pessoa de
-ver o resultado se o RD Station estiver indisponível.
+consentimento, idempotência, retry). São duas conversões:
+
+| Identificador | Quando dispara | Dados principais |
+|---|---|---|
+| `plano-comercial-90-dias-captura` | Envio do formulário inicial | nome, e-mail, empresa, site, origem |
+| `plano-comercial-90-dias-realizado` | Plano de 90 dias pronto | + telefone, desafio, gargalo, confiança |
+
+As duas levam o link do diagnóstico da pessoa em `cf_link_plano_comercial`
+(`APP_URL` + `/diagnostico/{id}`, ex.: `https://quiz.jobcontent.com.br/diagnostico/...`).
+
+Nenhuma das duas bloqueia a jornada se o RD Station estiver
+indisponível. Até a versão 03, a conversão de plano pronto se chamava
+`plano-comercial-90-dias` — **automações, segmentações e relatórios da RD
+que usavam esse nome precisam ser atualizados** para
+`plano-comercial-90-dias-realizado`.
+
+## Origem das conversões
+
+Toda conversão envia a origem do lead, de um destes dois jeitos
+(documentação: https://developers.rdstation.com/reference/conversao):
+
+1. **Cookie da RD (preferencial)**: com o **código de monitoramento da RD
+   Station instalado no site** (pode ser via GTM), o navegador ganha os
+   cookies `__trf.src` (origem calculada pela RD) e `_rdtrk` (id do
+   visitante). Eles são lidos no envio do formulário inicial, gravados no
+   lead e enviados como `traffic_source` e `client_tracking_id`. A RD
+   classifica sozinha a origem (busca orgânica, tráfego direto,
+   referência, social, campanhas). Nesse caso, `traffic_medium`,
+   `traffic_campaign` e `traffic_value` vão vazios, como a RD exige.
+2. **UTMs da URL (alternativa)**: sem o cookie, vão `utm_source`,
+   `utm_medium`, `utm_campaign` e `utm_term` como `traffic_source`,
+   `traffic_medium`, `traffic_campaign` e `traffic_value`.
+
+- [ ] Instalar o código de monitoramento da RD no site (painel da RD →
+      Integrações → Código de monitoramento; via GTM, uma tag HTML
+      personalizada em "All Pages").
+- [ ] Banco já existente: rodar `supabase/updates/2026-10-rd-origem-conversao.sql`
+      no SQL Editor do Supabase (cria `leads.rd_traffic_source` e
+      `leads.rd_client_tracking_id`).
 
 ## Consentimento LGPD — implícito, resolvido
 
@@ -54,12 +88,11 @@ mudar (nunca só por ajuste cosmético de redação).
       Nunca prefixe com `NEXT_PUBLIC_` — a chamada acontece só no
       servidor (`src/lib/rd-station/client.ts`, `import "server-only"`),
       nunca no navegador.
-- [ ] **`conversion_identifier`**: já está definido em
-      `src/lib/rd-station/config.ts` como `"plano-comercial-90-dias"`. Se
-      o time de marketing já usa outro padrão de nomenclatura de
-      conversões no RD Station, troque o valor **nesse único arquivo**
-      (não precisa mexer em mais nada) antes do primeiro envio em
-      produção — trocar depois de já ter enviado eventos cria, do ponto
+- [ ] **`conversion_identifier`**: definidos em
+      `src/lib/rd-station/config.ts` (`RD_CONVERSION_IDENTIFIERS`) como
+      `"plano-comercial-90-dias-captura"` e
+      `"plano-comercial-90-dias-realizado"`. Para trocar, mude **só esse
+      arquivo** — trocar depois de já ter enviado eventos cria, do ponto
       de vista do RD Station, uma conversão nova (o histórico da antiga
       não migra sozinho).
 - [ ] **Campos personalizados a criar no RD Station** (painel → CRM/Automação
@@ -76,7 +109,7 @@ mudar (nunca só por ajuste cosmético de redação).
       | `cf_gargalo_principal`       | Gargalo comercial identificado (texto, em português) |
       | `cf_nivel_confianca`         | `low` / `medium` / `high`                          |
       | `cf_segmento_empresa`        | Segmento da empresa, se confirmado na jornada      |
-      | `cf_link_plano_comercial`    | Link assinado do PDF (só quando já existir um)     |
+      | `cf_link_plano_comercial`    | Link do diagnóstico da pessoa (`APP_URL` + `/diagnostico/{id}`) |
 
       Removidos por decisão do time (não são mais enviados nem precisam
       existir no RD Station): `cf_risco_secundario`, `cf_qualidade_dados`,
@@ -120,8 +153,12 @@ mudar (nunca só por ajuste cosmético de redação).
       plano ainda é gerado e exibido normalmente — a integração deve
       falhar em silêncio (registrada em `rd_integrations`, nunca
       quebrando a tela de resultado).
+- [ ] **Conversão de captura**: logo depois de enviar o formulário
+      inicial, o contato já deve aparecer na RD com a conversão
+      `plano-comercial-90-dias-captura`, antes mesmo de responder as
+      perguntas.
 - [ ] Confirme na tabela `rd_integrations` (Supabase → Table Editor) que
-      existe **uma única linha** por diagnóstico de teste mesmo depois de
+      existe **uma única linha por evento** (captura e realizado) por diagnóstico de teste mesmo depois de
       clicar em "Tentar novamente" várias vezes — `status` deve terminar
       em `sent` (sucesso), `failed` (erro de validação/autenticação, não
       tenta de novo sozinho) ou `retrying` (erro temporário, uma próxima

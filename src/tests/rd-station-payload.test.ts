@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { RD_CONVERSION_IDENTIFIER } from "@/lib/rd-station/config";
+import { RD_CONVERSION_IDENTIFIERS } from "@/lib/rd-station/config";
 import { RD_CUSTOM_FIELDS, RD_NATIVE_FIELDS } from "@/lib/rd-station/field-map";
 import { buildRdStationConversionPayload, type BuildRdStationConversionPayloadInput } from "@/lib/rd-station/payload";
 
 function baseInput(overrides: Partial<BuildRdStationConversionPayloadInput> = {}): BuildRdStationConversionPayloadInput {
   return {
+    conversionIdentifier: RD_CONVERSION_IDENTIFIERS.completed,
     lead: {
       email: "pessoa@empresa.com.br",
       name: null,
@@ -17,6 +18,8 @@ function baseInput(overrides: Partial<BuildRdStationConversionPayloadInput> = {}
       utmCampaign: null,
       utmContent: null,
       utmTerm: null,
+      rdTrafficSource: null,
+      rdClientTrackingId: null,
     },
     company: {
       companyName: "CodeBit Tecnologia",
@@ -29,7 +32,7 @@ function baseInput(overrides: Partial<BuildRdStationConversionPayloadInput> = {}
       primaryBottleneckLabel: null,
       confidenceLevel: null,
     },
-    pdf: null,
+    planLink: null,
     ...overrides,
   };
 }
@@ -37,7 +40,7 @@ function baseInput(overrides: Partial<BuildRdStationConversionPayloadInput> = {}
 describe("buildRdStationConversionPayload — base", () => {
   it("sempre inclui conversion_identifier e email", () => {
     const payload = buildRdStationConversionPayload(baseInput());
-    expect(payload.conversion_identifier).toBe(RD_CONVERSION_IDENTIFIER);
+    expect(payload.conversion_identifier).toBe(RD_CONVERSION_IDENTIFIERS.completed);
     expect(payload.email).toBe("pessoa@empresa.com.br");
   });
 
@@ -52,7 +55,7 @@ describe("buildRdStationConversionPayload — base", () => {
     expect(payload[RD_NATIVE_FIELDS.name]).toBeUndefined();
     expect(payload[RD_NATIVE_FIELDS.website]).toBeUndefined();
     expect(payload[RD_NATIVE_FIELDS.trafficSource]).toBeUndefined();
-    expect(payload[RD_CUSTOM_FIELDS.pdfLink]).toBeUndefined();
+    expect(payload[RD_CUSTOM_FIELDS.planLink]).toBeUndefined();
   });
 });
 
@@ -112,6 +115,41 @@ describe("buildRdStationConversionPayload — UTMs", () => {
   });
 });
 
+describe("buildRdStationConversionPayload — origem pelo cookie da RD", () => {
+  it("com o cookie __trf.src, envia só traffic_source (medium/campaign/value vazios, como exige a RD)", () => {
+    const payload = buildRdStationConversionPayload(
+      baseInput({
+        lead: {
+          ...baseInput().lead,
+          utmSource: "google",
+          utmMedium: "cpc",
+          utmCampaign: "plano",
+          utmTerm: "termo",
+          rdTrafficSource: "eyJmaXJzdF9zZXNzaW9uIjp7fX0=",
+        },
+      }),
+    );
+    expect(payload[RD_NATIVE_FIELDS.trafficSource]).toBe("eyJmaXJzdF9zZXNzaW9uIjp7fX0=");
+    expect(payload[RD_NATIVE_FIELDS.trafficMedium]).toBeUndefined();
+    expect(payload[RD_NATIVE_FIELDS.trafficCampaign]).toBeUndefined();
+    expect(payload[RD_NATIVE_FIELDS.trafficValue]).toBeUndefined();
+  });
+
+  it("envia client_tracking_id quando o cookie _rdtrk existe", () => {
+    const payload = buildRdStationConversionPayload(
+      baseInput({ lead: { ...baseInput().lead, rdClientTrackingId: "43b00843-09af-4fae-bf9d-a0697640b808" } }),
+    );
+    expect(payload[RD_NATIVE_FIELDS.clientTrackingId]).toBe("43b00843-09af-4fae-bf9d-a0697640b808");
+  });
+
+  it("usa o identificador de conversão recebido (captura ou realizado)", () => {
+    const payload = buildRdStationConversionPayload(
+      baseInput({ conversionIdentifier: RD_CONVERSION_IDENTIFIERS.capture }),
+    );
+    expect(payload.conversion_identifier).toBe("plano-comercial-90-dias-captura");
+  });
+});
+
 describe("buildRdStationConversionPayload — dados do contato (quando disponíveis)", () => {
   it("inclui nome, telefones e cargo quando presentes", () => {
     const payload = buildRdStationConversionPayload(
@@ -150,7 +188,7 @@ describe("buildRdStationConversionPayload — dados comerciais do diagnóstico",
           primaryBottleneckLabel: "Conversão",
           confidenceLevel: "medium",
         },
-        pdf: null,
+        planLink: null,
       }),
     );
 
@@ -168,16 +206,17 @@ describe("buildRdStationConversionPayload — dados comerciais do diagnóstico",
     expect("cf_status_diagnostico" in payload).toBe(false);
   });
 
-  it("inclui o link do PDF quando disponível", () => {
+  it("envia o link do diagnóstico em cf_link_plano_comercial", () => {
     const payload = buildRdStationConversionPayload(
-      baseInput({ pdf: { url: "https://storage.example/signed-pdf-url" } }),
+      baseInput({ planLink: "https://quiz.jobcontent.com.br/diagnostico/diagnostic-1" }),
     );
-    expect(payload[RD_CUSTOM_FIELDS.pdfLink]).toBe("https://storage.example/signed-pdf-url");
+    expect(payload[RD_CUSTOM_FIELDS.planLink]).toBe("https://quiz.jobcontent.com.br/diagnostico/diagnostic-1");
+    expect(RD_CUSTOM_FIELDS.planLink).toBe("cf_link_plano_comercial");
   });
 
-  it("não bloqueia nem inventa link quando o PDF ainda não existe", () => {
-    const payload = buildRdStationConversionPayload(baseInput({ pdf: null }));
-    expect(payload[RD_CUSTOM_FIELDS.pdfLink]).toBeUndefined();
+  it("não envia o campo quando não há link", () => {
+    const payload = buildRdStationConversionPayload(baseInput({ planLink: null }));
+    expect(payload[RD_CUSTOM_FIELDS.planLink]).toBeUndefined();
   });
 });
 

@@ -12,6 +12,7 @@ import {
   siteAnalysisResultSchema,
   type SiteAnalysisResult,
 } from "@/lib/ai/site-analysis-schema";
+import { RdTrackingScript } from "@/components/analytics/rd-tracking-script";
 import { PhoneGate } from "@/components/result/phone-gate";
 import { ResultPage } from "@/components/result/result-page";
 import { companies, diagnostics, leads, siteAnalyses } from "@/lib/database";
@@ -160,6 +161,7 @@ export default async function DiagnosticStatusPage({ params, searchParams }: Pag
     if (lead && !lead.phone && resultState.status !== "not_found") {
       return (
         <PageShell progress={85}>
+          <RdTrackingScript />
           <PhoneGate
             diagnosticId={diagnosticId}
             companyName={resultState.companyName}
@@ -171,6 +173,7 @@ export default async function DiagnosticStatusPage({ params, searchParams }: Pag
 
     return (
       <PageShell progress={90} size="wide">
+        <RdTrackingScript />
         <ResultPage state={resultState} />
       </PageShell>
     );

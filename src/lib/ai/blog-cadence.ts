@@ -135,6 +135,9 @@ export async function ensureBlogCadence(context: AIContext, plan: CommercialPlan
     maxTokens: 8_000,
     strict: true,
     timeoutMs: 120_000,
+    stream: true,
+    retryOnTimeout: false,
+    retryOnlyIfFailedWithinMs: 30_000,
   });
 
   const newPosts = result.data as Partial<Record<PhaseKey, BlogPost[]>>;

@@ -143,6 +143,8 @@ export type Database = {
           utm_campaign: string | null;
           utm_content: string | null;
           utm_term: string | null;
+          rd_traffic_source: string | null;
+          rd_client_tracking_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -160,6 +162,8 @@ export type Database = {
           utm_campaign?: string | null;
           utm_content?: string | null;
           utm_term?: string | null;
+          rd_traffic_source?: string | null;
+          rd_client_tracking_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };

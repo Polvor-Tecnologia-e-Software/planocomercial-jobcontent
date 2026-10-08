@@ -45,7 +45,7 @@ diferentes — ex.: um projeto Supabase de staging para Preview).
 | `AI_MODEL` | Sim | Ex.: `gpt-4o` |
 | `RD_STATION_API_KEY` | Opcional | Sem ela, a conversão ao RD Station fica desativada (nunca bloqueia o resto do produto). Secreta |
 | `RD_STATION_CLIENT_ID/_SECRET/_REFRESH_TOKEN` | Opcional, reservada | Não usadas pela integração atual (API Key) — reservadas para uma eventual integração OAuth futura |
-| `APP_URL` | Sim | URL pública do deploy (ex.: `https://seu-dominio.com`) |
+| `APP_URL` | Sim | URL pública do deploy, sem barra no final: `https://quiz.jobcontent.com.br` (vai no link do diagnóstico enviado à RD) |
 
 - [ ] Nenhuma variável secreta (`SUPABASE_SERVICE_ROLE_KEY`, `AI_API_KEY`,
       `RD_STATION_*`) tem o prefixo `NEXT_PUBLIC_`. Confirme visualmente

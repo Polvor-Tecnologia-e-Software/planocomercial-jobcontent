@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { RdTrackingScript } from "@/components/analytics/rd-tracking-script";
 import { DiagnosticJourney } from "@/components/diagnostic/diagnostic-journey";
 
 export const metadata: Metadata = {
@@ -12,5 +13,11 @@ export const metadata: Metadata = {
  * esta página em si é só o wrapper de metadata/rota.
  */
 export default function DiagnosticoPage() {
-  return <DiagnosticJourney />;
+  return (
+    <>
+      {/* Tela inicial e formulário (as duas vivem neste endereço). */}
+      <RdTrackingScript />
+      <DiagnosticJourney />
+    </>
+  );
 }

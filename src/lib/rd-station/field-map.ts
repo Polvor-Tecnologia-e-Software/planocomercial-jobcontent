@@ -26,6 +26,8 @@ export const RD_NATIVE_FIELDS = {
   trafficCampaign: "traffic_campaign",
   /** Não existe "traffic_term" documentado — o RD usa "traffic_value" para o equivalente de UTM term. */
   trafficValue: "traffic_value",
+  /** Valor do cookie _rdtrk — liga a conversão ao histórico de navegação do visitante na RD. */
+  clientTrackingId: "client_tracking_id",
 } as const;
 
 /**
@@ -41,5 +43,6 @@ export const RD_CUSTOM_FIELDS = {
   primaryBottleneck: "cf_gargalo_principal",
   confidenceLevel: "cf_nivel_confianca",
   segment: "cf_segmento_empresa",
-  pdfLink: "cf_link_plano_comercial",
+  /** Link público da tela do diagnóstico/plano da pessoa (ex.: https://quiz.jobcontent.com.br/diagnostico/{id}). */
+  planLink: "cf_link_plano_comercial",
 } as const;

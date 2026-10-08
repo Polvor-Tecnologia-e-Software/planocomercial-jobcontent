@@ -1,6 +1,6 @@
 import "server-only";
 
-import { RD_CONVERSION_IDENTIFIER } from "@/lib/rd-station/config";
+import type { RdConversionIdentifier } from "@/lib/rd-station/config";
 import { RD_CUSTOM_FIELDS, RD_NATIVE_FIELDS } from "@/lib/rd-station/field-map";
 
 /** Nenhum campo de texto enviado ao RD Station passa disso — proteção simples contra payload injection/campos gigantes (seção 16). */
@@ -17,6 +17,10 @@ export type RdStationLeadInput = {
   utmCampaign: string | null;
   utmContent: string | null;
   utmTerm: string | null;
+  /** Cookie __trf.src da RD, quando o código de monitoramento estava no site. */
+  rdTrafficSource: string | null;
+  /** Cookie _rdtrk da RD. */
+  rdClientTrackingId: string | null;
 };
 
 export type RdStationCompanyInput = {
@@ -32,13 +36,13 @@ export type RdStationDiagnosticInput = {
   confidenceLevel: string | null;
 };
 
-export type RdStationPdfInput = { url: string } | null;
-
 export type BuildRdStationConversionPayloadInput = {
+  conversionIdentifier: RdConversionIdentifier;
   lead: RdStationLeadInput;
   company: RdStationCompanyInput;
   diagnostic: RdStationDiagnosticInput;
-  pdf: RdStationPdfInput;
+  /** Link público da tela do diagnóstico desta pessoa (vai em cf_link_plano_comercial). */
+  planLink: string | null;
 };
 
 /**
@@ -70,10 +74,10 @@ function clean(value: string | null | undefined): string | undefined {
 export function buildRdStationConversionPayload(
   input: BuildRdStationConversionPayloadInput,
 ): RdStationConversionPayload {
-  const { lead, company, diagnostic, pdf } = input;
+  const { conversionIdentifier, lead, company, diagnostic, planLink } = input;
 
   const payload: RdStationConversionPayload = {
-    conversion_identifier: RD_CONVERSION_IDENTIFIER,
+    conversion_identifier: conversionIdentifier,
     email: lead.email,
   };
 
@@ -94,18 +98,31 @@ export function buildRdStationConversionPayload(
   const website = clean(company.website);
   if (website) payload[RD_NATIVE_FIELDS.website] = website;
 
-  // UTMs: nomes nativos do RD Station não são "utm_*" (ver field-map.ts).
-  const trafficSource = clean(lead.utmSource);
-  if (trafficSource) payload[RD_NATIVE_FIELDS.trafficSource] = trafficSource;
+  // Origem da conversão (https://developers.rdstation.com/reference/conversao):
+  // com o cookie __trf.src, a RD classifica a origem sozinha (orgânico,
+  // direto, referência, social, campanha) — e nesse caso traffic_medium,
+  // traffic_campaign e traffic_value PRECISAM ir vazios. Sem o cookie
+  // (código de monitoramento da RD ausente no site), cai nos UTMs da URL.
+  const rdTrafficSource = clean(lead.rdTrafficSource);
+  if (rdTrafficSource) {
+    payload[RD_NATIVE_FIELDS.trafficSource] = rdTrafficSource;
+  } else {
+    // UTMs: nomes nativos do RD Station não são "utm_*" (ver field-map.ts).
+    const trafficSource = clean(lead.utmSource);
+    if (trafficSource) payload[RD_NATIVE_FIELDS.trafficSource] = trafficSource;
 
-  const trafficMedium = clean(lead.utmMedium);
-  if (trafficMedium) payload[RD_NATIVE_FIELDS.trafficMedium] = trafficMedium;
+    const trafficMedium = clean(lead.utmMedium);
+    if (trafficMedium) payload[RD_NATIVE_FIELDS.trafficMedium] = trafficMedium;
 
-  const trafficCampaign = clean(lead.utmCampaign);
-  if (trafficCampaign) payload[RD_NATIVE_FIELDS.trafficCampaign] = trafficCampaign;
+    const trafficCampaign = clean(lead.utmCampaign);
+    if (trafficCampaign) payload[RD_NATIVE_FIELDS.trafficCampaign] = trafficCampaign;
 
-  const trafficValue = clean(lead.utmTerm);
-  if (trafficValue) payload[RD_NATIVE_FIELDS.trafficValue] = trafficValue;
+    const trafficValue = clean(lead.utmTerm);
+    if (trafficValue) payload[RD_NATIVE_FIELDS.trafficValue] = trafficValue;
+  }
+
+  const clientTrackingId = clean(lead.rdClientTrackingId);
+  if (clientTrackingId) payload[RD_NATIVE_FIELDS.clientTrackingId] = clientTrackingId;
 
   // utm_content não tem campo nativo no endpoint de Conversão.
   const utmContent = clean(lead.utmContent);
@@ -126,10 +143,8 @@ export function buildRdStationConversionPayload(
   const segment = clean(company.segment);
   if (segment) payload[RD_CUSTOM_FIELDS.segment] = segment;
 
-  if (pdf) {
-    const pdfUrl = clean(pdf.url);
-    if (pdfUrl) payload[RD_CUSTOM_FIELDS.pdfLink] = pdfUrl;
-  }
+  const link = clean(planLink);
+  if (link) payload[RD_CUSTOM_FIELDS.planLink] = link;
 
   return payload;
 }

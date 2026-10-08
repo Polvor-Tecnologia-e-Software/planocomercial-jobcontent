@@ -116,7 +116,24 @@ export class AiCallError extends Error {
   }
 }
 
+/**
+ * Resumo curto e seguro do erro real (status HTTP + nome + mensagem do
+ * SDK, nunca cabeçalhos nem a chave) — vai no log e em ai_reports.last_error.
+ * Antes, toda falha virava só "Falha na chamada de IA.", sem pista nenhuma.
+ */
+function describeCallError(err: unknown): string {
+  if (!(err instanceof Error)) return String(err).slice(0, 200);
+  const status = (err as { status?: unknown }).status;
+  const prefix = typeof status === "number" ? `HTTP ${status} ` : "";
+  return `${prefix}${err.name}: ${err.message}`.replace(/\s+/g, " ").slice(0, 300);
+}
+
 function isRetryableTransportError(err: unknown): boolean {
+  // Queda de conexão (rede, proxy, antivírus) — tão temporária quanto um
+  // 5xx. Antes não era repetida e virava "Falha na chamada de IA" direto.
+  if (typeof OpenAI.APIConnectionError === "function" && err instanceof OpenAI.APIConnectionError) {
+    return true;
+  }
   // Checagem defensiva de typeof antes do instanceof: em testes com o SDK
   // mockado, OpenAI.APIError pode não existir — "instanceof undefined"
   // lançaria um TypeError próprio, mascarando o erro original.
@@ -126,6 +143,73 @@ function isRetryableTransportError(err: unknown): boolean {
     return false;
   }
   return err instanceof Error && err.name === "AbortError";
+}
+
+type ToolCallResult = {
+  /** Texto bruto dos argumentos da tool pedida, ou null se a IA não a chamou. */
+  argumentsText: string | null;
+  promptTokens: number;
+  completionTokens: number;
+  /** Só para diagnóstico de erro (AiResponseValidationError). */
+  rawMessage: unknown;
+};
+
+async function requestToolCall(
+  client: OpenAI,
+  body: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming,
+  signal: AbortSignal,
+  toolName: string,
+): Promise<ToolCallResult> {
+  const response = await client.chat.completions.create(body, { signal });
+  const message = response.choices[0]?.message;
+  const toolCall = message?.tool_calls?.find((call) => call.type === "function" && call.function.name === toolName);
+  return {
+    argumentsText: toolCall && toolCall.type === "function" ? toolCall.function.arguments : null,
+    promptTokens: response.usage?.prompt_tokens ?? 0,
+    completionTokens: response.usage?.completion_tokens ?? 0,
+    rawMessage: message,
+  };
+}
+
+/** Mesma chamada, recebendo os argumentos da tool aos poucos e juntando os pedaços. */
+async function requestToolCallStreaming(
+  client: OpenAI,
+  body: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming,
+  signal: AbortSignal,
+  toolName: string,
+): Promise<ToolCallResult> {
+  const stream = await client.chat.completions.create(
+    { ...body, stream: true, stream_options: { include_usage: true } },
+    { signal },
+  );
+
+  let name: string | undefined;
+  let argumentsText = "";
+  let promptTokens = 0;
+  let completionTokens = 0;
+  let finishReason: string | null | undefined;
+
+  for await (const chunk of stream) {
+    if (chunk.usage) {
+      promptTokens = chunk.usage.prompt_tokens ?? 0;
+      completionTokens = chunk.usage.completion_tokens ?? 0;
+    }
+    const choice = chunk.choices[0];
+    if (!choice) continue;
+    if (choice.finish_reason) finishReason = choice.finish_reason;
+    for (const call of choice.delta?.tool_calls ?? []) {
+      if (call.index !== 0) continue;
+      if (call.function?.name) name = call.function.name;
+      if (call.function?.arguments) argumentsText += call.function.arguments;
+    }
+  }
+
+  return {
+    argumentsText: name === toolName && argumentsText !== "" ? argumentsText : null,
+    promptTokens,
+    completionTokens,
+    rawMessage: { toolName: name, finishReason },
+  };
 }
 
 /**
@@ -173,6 +257,16 @@ export async function generateStructuredJson<T>(params: {
   maxRetries?: number;
   /** Só passe true para um schema já conferido: todo campo obrigatório ou `.nullable()`, nunca `.optional()`/`.default()`. */
   strict?: boolean;
+  /**
+   * Recebe a resposta aos poucos (streaming) em vez de esperar tudo de uma
+   * vez. Para chamadas longas: a conexão nunca fica parada por dezenas de
+   * segundos sem tráfego, o que derrubava a chamada em algumas redes.
+   */
+  stream?: boolean;
+  /** false = não repete quando estoura o timeout (padrão: repete). Para chamadas longas, repetir dobraria a espera. */
+  retryOnTimeout?: boolean;
+  /** Só repete se a tentativa falhou dentro deste prazo (falha rápida); sem limite quando ausente. */
+  retryOnlyIfFailedWithinMs?: number;
 }): Promise<GenerateStructuredJsonResult<T>> {
   const env = parseServerEnv();
   const client = getClient();
@@ -186,52 +280,46 @@ export async function generateStructuredJson<T>(params: {
     const startedAt = Date.now();
 
     try {
-      const response = await client.chat.completions.create(
-        {
-          model: env.AI_MODEL,
-          max_tokens: params.maxTokens ?? 1500,
-          messages: [
-            { role: "system", content: params.system },
-            { role: "user", content: params.userPrompt },
-          ],
-          tools: [
-            {
-              type: "function",
-              function: {
-                name: params.toolName,
-                description: params.toolDescription,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- JSON Schema gerado dinamicamente pelo Zod.
-                parameters: jsonSchema as any,
-                ...(params.strict ? { strict: true } : {}),
-              },
+      const body: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
+        model: env.AI_MODEL,
+        max_tokens: params.maxTokens ?? 1500,
+        messages: [
+          { role: "system", content: params.system },
+          { role: "user", content: params.userPrompt },
+        ],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: params.toolName,
+              description: params.toolDescription,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any -- JSON Schema gerado dinamicamente pelo Zod.
+              parameters: jsonSchema as any,
+              ...(params.strict ? { strict: true } : {}),
             },
-          ],
-          tool_choice: { type: "function", function: { name: params.toolName } },
-        },
-        { signal: controller.signal },
-      );
+          },
+        ],
+        tool_choice: { type: "function", function: { name: params.toolName } },
+      };
+
+      const toolCall = params.stream
+        ? await requestToolCallStreaming(client, body, controller.signal, params.toolName)
+        : await requestToolCall(client, body, controller.signal, params.toolName);
 
       const latencyMs = Date.now() - startedAt;
 
-      const toolCall = response.choices[0]?.message.tool_calls?.find(
-        (call) => call.type === "function" && call.function.name === params.toolName,
-      );
-
-      if (!toolCall || toolCall.type !== "function") {
+      if (toolCall.argumentsText === null) {
         throw new AiResponseValidationError(
           "A IA não retornou uma chamada de tool com o resultado esperado.",
-          response.choices[0]?.message,
+          toolCall.rawMessage,
         );
       }
 
       let parsedArguments: unknown;
       try {
-        parsedArguments = JSON.parse(toolCall.function.arguments);
+        parsedArguments = JSON.parse(toolCall.argumentsText);
       } catch {
-        throw new AiResponseValidationError(
-          "A resposta da IA não é um JSON válido.",
-          toolCall.function.arguments,
-        );
+        throw new AiResponseValidationError("A resposta da IA não é um JSON válido.", toolCall.argumentsText);
       }
 
       // Corta campos de texto livre além do maxLength ANTES de validar —
@@ -248,23 +336,30 @@ export async function generateStructuredJson<T>(params: {
 
       return {
         data: validation.data,
-        inputTokens: response.usage?.prompt_tokens ?? 0,
-        outputTokens: response.usage?.completion_tokens ?? 0,
+        inputTokens: toolCall.promptTokens,
+        outputTokens: toolCall.completionTokens,
         model: env.AI_MODEL,
         latencyMs,
       };
     } catch (err) {
       if (err instanceof AiResponseValidationError) throw err;
 
-      const retryable = isRetryableTransportError(err);
+      // O cronômetro desta tentativa é a fonte da verdade do timeout: o SDK
+      // da OpenAI lança APIUserAbortError (não "AbortError") ao ser
+      // cancelado — antes, todo timeout real virava "Falha na chamada de IA".
+      const isAbort = controller.signal.aborted || (err instanceof Error && err.name === "AbortError");
+      const failedQuickly =
+        params.retryOnlyIfFailedWithinMs === undefined || Date.now() - startedAt <= params.retryOnlyIfFailedWithinMs;
+      const retryable =
+        (isAbort ? params.retryOnTimeout !== false : isRetryableTransportError(err)) && (isAbort || failedQuickly);
+
       if (retryable && attempt < maxRetries) {
         await new Promise((resolve) => setTimeout(resolve, 1_000 * (attempt + 1)));
         continue;
       }
 
-      const isAbort = err instanceof Error && err.name === "AbortError";
       throw new AiCallError(
-        isAbort ? "A chamada de IA excedeu o tempo limite." : "Falha na chamada de IA.",
+        isAbort ? "A chamada de IA excedeu o tempo limite." : `Falha na chamada de IA (${describeCallError(err)}).`,
         retryable,
         err,
       );

@@ -2,6 +2,8 @@
 
 import { redirect } from "next/navigation";
 
+import { withStoredUtm } from "@/server/utm";
+
 import { parseCompanyProfileFieldsFromForm } from "@/lib/validation/site-analysis-confirmation";
 import { confirmSiteAnalysis } from "@/server/confirm-site-analysis";
 
@@ -21,7 +23,7 @@ export async function confirmSiteAnalysisAction(formData: FormData): Promise<voi
   const siteAnalysisId = formData.get("siteAnalysisId");
 
   if (!diagnosticId || !companyId) {
-    redirect(`/diagnostico/${diagnosticId}?analysisError=1`);
+    redirect(await withStoredUtm(`/diagnostico/${diagnosticId}?analysisError=1`));
   }
 
   try {
@@ -33,10 +35,10 @@ export async function confirmSiteAnalysisAction(formData: FormData): Promise<voi
       fields: parseCompanyProfileFieldsFromForm(formData),
     });
   } catch {
-    redirect(`/diagnostico/${diagnosticId}?analysisError=1`);
+    redirect(await withStoredUtm(`/diagnostico/${diagnosticId}?analysisError=1`));
   }
 
   // redirect() lança um sinal especial do Next.js — precisa ficar fora
   // do try/catch acima, senão o catch o interpretaria como um erro real.
-  redirect(`/diagnostico/${diagnosticId}`);
+  redirect(await withStoredUtm(`/diagnostico/${diagnosticId}`));
 }

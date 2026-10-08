@@ -2,7 +2,7 @@
 
 import { analyzeSeoOpportunities } from "@/server/analyze-seo-opportunities";
 import { generateCommercialPlan } from "@/server/generate-commercial-plan";
-import { sendRdStationConversion } from "@/server/send-rd-station-conversion";
+import { sendRdStationCompletedConversion } from "@/server/send-rd-station-conversion";
 
 // maxDuration NÃO pode ser exportado aqui — um arquivo "use server" só
 // pode exportar funções async (erro de build real, encontrado ao testar).
@@ -36,7 +36,7 @@ export async function generateCommercialPlanAction(diagnosticId: string): Promis
     // algo inesperado quebrar numa integração externa. Em paralelo
     // (allSettled) porque são independentes uma da outra.
     const [rdStation, seo] = await Promise.allSettled([
-      sendRdStationConversion(diagnosticId),
+      sendRdStationCompletedConversion(diagnosticId),
       analyzeSeoOpportunities(diagnosticId),
     ]);
 

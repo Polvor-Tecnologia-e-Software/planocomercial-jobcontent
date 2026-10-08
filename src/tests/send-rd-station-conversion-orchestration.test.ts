@@ -4,7 +4,6 @@ const getDiagnosticById = vi.fn();
 const completeDiagnostic = vi.fn();
 const getCompanyById = vi.fn();
 const getLeadById = vi.fn();
-const getLatestPdfReport = vi.fn();
 const findIntegrationByEvent = vi.fn();
 const createIntegrationIfAbsent = vi.fn();
 const markIntegrationSent = vi.fn();
@@ -12,7 +11,6 @@ const markIntegrationFailed = vi.fn();
 const markIntegrationPermanentlyFailed = vi.fn();
 const getCommercialPlanResult = vi.fn();
 const sendConversion = vi.fn();
-const storageCreateSignedUrl = vi.fn();
 
 // vi.hoisted: a factory de vi.mock roda antes de qualquer "let" normal do
 // arquivo — precisamos de um objeto mutável que já exista nesse momento
@@ -25,7 +23,7 @@ vi.mock("@/config/env.server", () => ({
     AI_API_KEY: "x",
     AI_MODEL: "x",
     SUPABASE_SERVICE_ROLE_KEY: "x",
-    APP_URL: "https://exemplo.com",
+    APP_URL: "https://quiz.jobcontent.com.br/",
     RD_STATION_API_KEY: envState.rdApiKey,
   }),
 }));
@@ -34,7 +32,6 @@ vi.mock("@/lib/database", () => ({
   diagnostics: { getDiagnosticById, completeDiagnostic },
   companies: { getCompanyById },
   leads: { getLeadById },
-  pdfReports: { getLatestPdfReport },
   rdIntegrations: {
     findIntegrationByEvent,
     createIntegrationIfAbsent,
@@ -46,13 +43,10 @@ vi.mock("@/lib/database", () => ({
 
 vi.mock("@/server/get-commercial-plan-result", () => ({ getCommercialPlanResult }));
 vi.mock("@/lib/rd-station/client", () => ({ sendConversion }));
-vi.mock("@/lib/supabase/admin", () => ({
-  createSupabaseAdminClient: () => ({
-    storage: { from: () => ({ createSignedUrl: storageCreateSignedUrl }) },
-  }),
-}));
 
-const { sendRdStationConversion } = await import("@/server/send-rd-station-conversion");
+const { sendRdStationCaptureConversion, sendRdStationCompletedConversion: sendRdStationConversion } = await import(
+  "@/server/send-rd-station-conversion",
+);
 
 function diagnostic(overrides: Record<string, unknown> = {}) {
   return {
@@ -87,6 +81,8 @@ function lead(overrides: Record<string, unknown> = {}) {
     utm_campaign: null,
     utm_content: null,
     utm_term: null,
+    rd_traffic_source: null,
+    rd_client_tracking_id: null,
     ...overrides,
   };
 }
@@ -102,7 +98,6 @@ beforeEach(() => {
   completeDiagnostic.mockResolvedValue(diagnostic({ status: "completed" }));
   getCompanyById.mockResolvedValue(company());
   getLeadById.mockResolvedValue(lead());
-  getLatestPdfReport.mockResolvedValue(null);
   getCommercialPlanResult.mockResolvedValue(completedPlanResult());
   findIntegrationByEvent.mockResolvedValue(null);
   createIntegrationIfAbsent.mockResolvedValue({
@@ -113,7 +108,6 @@ beforeEach(() => {
   markIntegrationFailed.mockResolvedValue({});
   markIntegrationPermanentlyFailed.mockResolvedValue({});
   sendConversion.mockResolvedValue({ kind: "success", httpStatus: 200, latencyMs: 10, eventUuid: "abc" });
-  storageCreateSignedUrl.mockResolvedValue({ data: { signedUrl: "https://storage.example/pdf-signed" }, error: null });
 });
 
 describe("sendRdStationConversion — pré-condições", () => {
@@ -183,18 +177,16 @@ describe("sendRdStationConversion — sucesso e payload", () => {
     expect(markIntegrationSent).toHaveBeenCalledWith("integration-1");
   });
 
-  it("inclui o link assinado do PDF quando já existe um pdf_reports 'available'", async () => {
-    getLatestPdfReport.mockResolvedValue({ storage_path: "diagnostic-1/abc.pdf", status: "available" });
+  it("envia o link do diagnóstico (APP_URL + /diagnostico/{id}) em cf_link_plano_comercial", async () => {
     await sendRdStationConversion("diagnostic-1");
     const [payloadArg] = sendConversion.mock.calls[0];
-    expect(payloadArg.cf_link_plano_comercial).toBe("https://storage.example/pdf-signed");
+    expect(payloadArg.cf_link_plano_comercial).toBe("https://quiz.jobcontent.com.br/diagnostico/diagnostic-1");
   });
 
-  it("não inclui link de PDF quando ainda não existe nenhum pdf_reports", async () => {
-    getLatestPdfReport.mockResolvedValue(null);
-    await sendRdStationConversion("diagnostic-1");
+  it("a conversão de captura também leva o link do diagnóstico", async () => {
+    await sendRdStationCaptureConversion("diagnostic-1");
     const [payloadArg] = sendConversion.mock.calls[0];
-    expect(payloadArg.cf_link_plano_comercial).toBeUndefined();
+    expect(payloadArg.cf_link_plano_comercial).toBe("https://quiz.jobcontent.com.br/diagnostico/diagnostic-1");
   });
 });
 
@@ -268,5 +260,66 @@ describe("sendRdStationConversion — retry e classificação de erro", () => {
     expect(result).toEqual({ status: "failed", reason: "too_many_attempts" });
     expect(sendConversion).not.toHaveBeenCalled();
     expect(markIntegrationPermanentlyFailed).toHaveBeenCalledWith("integration-1", "too_many_attempts");
+  });
+});
+
+describe("sendRdStationCompletedConversion — identificador e origem", () => {
+  it("envia com o identificador plano-comercial-90-dias-realizado e registra esse evento", async () => {
+    await sendRdStationConversion("diagnostic-1");
+    const [payloadArg] = sendConversion.mock.calls[0];
+    expect(payloadArg.conversion_identifier).toBe("plano-comercial-90-dias-realizado");
+    expect(findIntegrationByEvent).toHaveBeenCalledWith("diagnostic-1", "plano-comercial-90-dias-realizado");
+  });
+
+  it("envia a origem pelo cookie da RD quando existe, e o client_tracking_id", async () => {
+    getLeadById.mockResolvedValue(
+      lead({ rd_traffic_source: "encoded_src", rd_client_tracking_id: "trk-1", utm_source: "google", utm_medium: "cpc" }),
+    );
+    await sendRdStationConversion("diagnostic-1");
+    const [payloadArg] = sendConversion.mock.calls[0];
+    expect(payloadArg.traffic_source).toBe("encoded_src");
+    expect(payloadArg.traffic_medium).toBeUndefined();
+    expect(payloadArg.client_tracking_id).toBe("trk-1");
+  });
+});
+
+describe("sendRdStationCaptureConversion — envio do formulário inicial", () => {
+  it("envia com o identificador plano-comercial-90-dias-captura, sem exigir plano pronto", async () => {
+    getCommercialPlanResult.mockResolvedValue({ status: "not_generated" });
+    getLeadById.mockResolvedValue(lead({ name: "Maria", utm_source: "google", utm_medium: "cpc" }));
+
+    const result = await sendRdStationCaptureConversion("diagnostic-1");
+
+    expect(result).toEqual({ status: "sent" });
+    const [payloadArg] = sendConversion.mock.calls[0];
+    expect(payloadArg.conversion_identifier).toBe("plano-comercial-90-dias-captura");
+    expect(payloadArg.name).toBe("Maria");
+    expect(payloadArg.traffic_source).toBe("google");
+    expect(payloadArg.traffic_medium).toBe("cpc");
+    expect(payloadArg.cf_desafio_principal).toBeUndefined();
+    expect(completeDiagnostic).not.toHaveBeenCalled();
+    expect(createIntegrationIfAbsent).toHaveBeenCalledWith(
+      expect.objectContaining({ event_name: "plano-comercial-90-dias-captura" }),
+    );
+  });
+
+  it("não envia sem consentimento nem sem API Key", async () => {
+    getLeadById.mockResolvedValue(lead({ consent_given: false }));
+    expect(await sendRdStationCaptureConversion("diagnostic-1")).toEqual({
+      status: "skipped",
+      reason: "consent_missing",
+    });
+    envState.rdApiKey = undefined;
+    expect(await sendRdStationCaptureConversion("diagnostic-1")).toEqual({
+      status: "skipped",
+      reason: "not_configured",
+    });
+    expect(sendConversion).not.toHaveBeenCalled();
+  });
+
+  it("idempotente: já enviada -> already_sent", async () => {
+    findIntegrationByEvent.mockResolvedValue({ id: "integration-1", status: "sent", attempts: 1 });
+    expect(await sendRdStationCaptureConversion("diagnostic-1")).toEqual({ status: "already_sent" });
+    expect(sendConversion).not.toHaveBeenCalled();
   });
 });
