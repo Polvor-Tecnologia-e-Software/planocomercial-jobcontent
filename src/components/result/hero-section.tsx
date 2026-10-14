@@ -73,6 +73,8 @@ export function HeroSection({
               className="bg-whatsapp-green hover:bg-whatsapp-green-dark w-full rounded-full text-white hover:text-white sm:w-auto"
             >
               <a
+                data-gtm-click="whatsapp"
+                data-gtm-local="topo"
                 href={buildWhatsAppLink(
                   `Olá! Acabei de ver o diagnóstico de ${companyName} e quero falar com um especialista.`,
                 )}

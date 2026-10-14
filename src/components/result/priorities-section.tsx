@@ -61,6 +61,8 @@ export function PrioritiesSection({ priorities }: PrioritiesSectionProps) {
                 className="bg-whatsapp-green hover:bg-whatsapp-green-dark shadow-whatsapp-green/25 hover:shadow-whatsapp-green/30 mt-1 w-full rounded-full text-white shadow-lg hover:text-white"
               >
                 <a
+                  data-gtm-click="whatsapp"
+                  data-gtm-local={`prioridade_${index + 1}`}
                   href={buildWhatsAppLink(
                     `Olá! Vi no meu Plano Comercial que uma das prioridades é "${priority.title}". Quero entender melhor como avançar nisso.`,
                   )}

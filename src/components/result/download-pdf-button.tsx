@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
+import { pushClickEvent } from "@/lib/analytics/data-layer";
 import { getCommercialPlanPdfAction } from "@/server/actions/get-commercial-plan-pdf-action";
 
 type DownloadPdfButtonProps = {
@@ -31,12 +32,14 @@ export function DownloadPdfButton({ diagnosticId }: DownloadPdfButtonProps) {
 
   function handleClick() {
     setError(null);
+    pushClickEvent("pdf", { diagnostico_id: diagnosticId, local: "cta_final" });
     startTransition(async () => {
       const result = await getCommercialPlanPdfAction(diagnosticId);
       if (!result.ok) {
         setError(ERROR_MESSAGES[result.reason] ?? "Não foi possível gerar o PDF agora. Tente novamente.");
         return;
       }
+      pushClickEvent("pdfReady", { diagnostico_id: diagnosticId });
       window.open(result.url, "_blank", "noopener,noreferrer");
     });
   }

@@ -80,6 +80,8 @@ export function PlanStrategicSummary({ summary }: PlanStrategicSummaryProps) {
           className="bg-whatsapp-green hover:bg-whatsapp-green-dark w-full shrink-0 rounded-full text-white hover:text-white sm:w-auto"
         >
           <a
+            data-gtm-click="whatsapp"
+            data-gtm-local="resumo_estrategico"
             href={buildWhatsAppLink(
               "Olá! Quero validar a estratégia do meu Plano Comercial Inteligente em 90 Dias com um especialista.",
             )}

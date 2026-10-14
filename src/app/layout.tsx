@@ -3,6 +3,7 @@ import { Inter, Montserrat, Plus_Jakarta_Sans } from "next/font/google";
 import Script from "next/script";
 import { Suspense } from "react";
 
+import { ClickTracking } from "@/components/analytics/click-tracking";
 import { UtmPersistence } from "@/components/analytics/utm-persistence";
 import "./globals.css";
 
@@ -79,6 +80,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         <Suspense fallback={null}>
           <UtmPersistence />
         </Suspense>
+        <ClickTracking />
         {children}
       </body>
     </html>

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PlanGenerationProgress } from "@/components/result/plan-generation-progress";
+import { pushJourneyStep } from "@/lib/analytics/data-layer";
 import { formatBrazilianPhone } from "@/lib/validation/phone";
 import { generateCommercialPlanAction } from "@/server/actions/generate-commercial-plan-action";
 import { saveLeadPhoneAction } from "@/server/actions/save-lead-phone-action";
@@ -49,6 +50,7 @@ export function PhoneGate({ diagnosticId, companyName, needsGeneration }: PhoneG
       }
       if (needsGeneration) {
         setGenerating(true);
+        pushJourneyStep("generating", { diagnostico_id: diagnosticId, origem: "telefone" });
         // O resultado não é tratado aqui de propósito: depois do refresh,
         // a página mostra o plano pronto ou o estado de falha com "Tentar
         // novamente" — o telefone já está salvo nos dois casos.

@@ -121,6 +121,8 @@ export function SeoOpportunitiesSection({ opportunities }: SeoOpportunitiesSecti
           className="bg-whatsapp-green hover:bg-whatsapp-green-dark w-full shrink-0 rounded-full text-white hover:text-white sm:w-auto"
         >
           <a
+            data-gtm-click="whatsapp"
+            data-gtm-local="palavras_chave"
             href={buildWhatsAppLink(
               "Olá! Vi as palavras-chave sugeridas no meu Plano Comercial e quero transformá-las em um calendário de conteúdo.",
             )}

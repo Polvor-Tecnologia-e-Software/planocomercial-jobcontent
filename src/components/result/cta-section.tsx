@@ -33,6 +33,8 @@ export function CtaSection({ diagnosticId }: CtaSectionProps) {
             className="bg-whatsapp-green hover:bg-whatsapp-green-dark shadow-whatsapp-green/30 hover:shadow-whatsapp-green/40 w-full rounded-full text-white shadow-lg hover:text-white sm:w-auto"
           >
             <a
+              data-gtm-click="whatsapp"
+              data-gtm-local="cta_final"
               href={buildWhatsAppLink(
                 "Olá! Acabei de receber meu Plano Comercial Inteligente em 90 Dias e quero conversar com um especialista sobre como executá-lo.",
               )}

@@ -85,6 +85,8 @@ export function RootCauseChain({ description, evidence }: RootCauseChainProps) {
           className="bg-whatsapp-green hover:bg-whatsapp-green-dark w-full shrink-0 rounded-full text-white hover:text-white sm:w-auto"
         >
           <a
+            data-gtm-click="whatsapp"
+            data-gtm-local="causa_raiz"
             href={buildWhatsAppLink(
               "Olá! Vi a causa-raiz do meu diagnóstico comercial e quero entender o que isso significa pro meu negócio.",
             )}

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { PlanGenerationProgress } from "@/components/result/plan-generation-progress";
 import { Button } from "@/components/ui/button";
+import { pushJourneyStep } from "@/lib/analytics/data-layer";
 import { generateCommercialPlanAction } from "@/server/actions/generate-commercial-plan-action";
 
 type GeneratePlanTriggerProps = {
@@ -34,6 +35,7 @@ export function GeneratePlanTrigger({ diagnosticId, label }: GeneratePlanTrigger
 
   function handleClick() {
     setError(null);
+    pushJourneyStep("generating", { diagnostico_id: diagnosticId, origem: "nova_tentativa" });
     startTransition(async () => {
       const result = await generateCommercialPlanAction(diagnosticId);
       if (!result.ok) {

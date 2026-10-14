@@ -101,6 +101,8 @@ export function PlanLockedTeaser({ monthLabel, actionsCount }: PlanLockedTeaserP
               className="bg-whatsapp-green hover:bg-whatsapp-green-dark rounded-full text-white hover:text-white"
             >
               <a
+                data-gtm-click="whatsapp"
+                data-gtm-local="sugestoes_bloqueadas"
                 href={buildWhatsAppLink(
                   "Olá! Vi no meu Plano Comercial Inteligente em 90 Dias que há mais sugestões bloqueadas e quero desbloqueá-las.",
                 )}
@@ -131,6 +133,8 @@ export function PlanLockedTeaser({ monthLabel, actionsCount }: PlanLockedTeaserP
           className="bg-whatsapp-green hover:bg-whatsapp-green-dark w-full shrink-0 rounded-full text-white hover:text-white sm:w-auto"
         >
           <a
+            data-gtm-click="whatsapp"
+            data-gtm-local="executar_plano"
             href={buildWhatsAppLink(
               `Olá! Vi as ${actionsCount} ações do meu Plano Comercial Inteligente em 90 Dias e quero ajuda da Job Content para executar.`,
             )}

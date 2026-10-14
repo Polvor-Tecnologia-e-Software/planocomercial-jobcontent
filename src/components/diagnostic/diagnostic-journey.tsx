@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from "react";
 
+import { TrackJourneyStep } from "@/components/analytics/track-journey-step";
 import { Container } from "@/components/layout/container";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
@@ -30,6 +31,8 @@ export function DiagnosticJourney() {
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
+      {/* key: remonta ao trocar de etapa, disparando o evento da nova etapa. */}
+      <TrackJourneyStep key={step} step={step === "promise" ? "landing" : "form"} />
       {/* Sem cabeçalho na tela inicial de propósito — ela já tem sua
           própria logo grande no hero (ver promise/hero-section.tsx); um
           segundo cabeçalho com logo no topo seria redundante. Volta a

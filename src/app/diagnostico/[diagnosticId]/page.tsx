@@ -13,6 +13,7 @@ import {
   type SiteAnalysisResult,
 } from "@/lib/ai/site-analysis-schema";
 import { RdTrackingScript } from "@/components/analytics/rd-tracking-script";
+import { TrackJourneyStep } from "@/components/analytics/track-journey-step";
 import { PhoneGate } from "@/components/result/phone-gate";
 import { ResultPage } from "@/components/result/result-page";
 import { companies, diagnostics, leads, siteAnalyses } from "@/lib/database";
@@ -110,6 +111,7 @@ export default async function DiagnosticStatusPage({ params, searchParams }: Pag
   if (diagnostic.status === "company_confirmed") {
     return (
       <PageShell progress={40}>
+        <TrackJourneyStep step="challenge" params={{ diagnostico_id: diagnosticId }} />
         {challengeError ? (
           <p role="alert" className="text-destructive mb-4 text-center text-sm">
             Não conseguimos salvar sua última ação. Tente novamente.
@@ -133,6 +135,10 @@ export default async function DiagnosticStatusPage({ params, searchParams }: Pag
 
       return (
         <PageShell progress={headerProgress}>
+          <TrackJourneyStep
+            step="questions"
+            params={{ diagnostico_id: diagnosticId, desafio: journeyState.diagnostic.selected_challenge }}
+          />
           <AdaptiveDiagnosticJourney
             diagnosticId={diagnosticId}
             challenge={journeyState.diagnostic.selected_challenge}
@@ -162,6 +168,10 @@ export default async function DiagnosticStatusPage({ params, searchParams }: Pag
       return (
         <PageShell progress={85}>
           <RdTrackingScript />
+          <TrackJourneyStep
+            step="phone"
+            params={{ diagnostico_id: diagnosticId, desafio: diagnostic.selected_challenge }}
+          />
           <PhoneGate
             diagnosticId={diagnosticId}
             companyName={resultState.companyName}
@@ -174,6 +184,18 @@ export default async function DiagnosticStatusPage({ params, searchParams }: Pag
     return (
       <PageShell progress={90} size="wide">
         <RdTrackingScript />
+        {resultState.status === "completed" ? (
+          <TrackJourneyStep
+            step="result"
+            params={{
+              diagnostico_id: diagnosticId,
+              desafio: diagnostic.selected_challenge,
+              gargalo_principal: resultState.primaryBottleneck,
+            }}
+          />
+        ) : resultState.status === "failed" ? (
+          <TrackJourneyStep step="generationError" params={{ diagnostico_id: diagnosticId }} />
+        ) : null}
         <ResultPage state={resultState} />
       </PageShell>
     );
@@ -222,6 +244,20 @@ export default async function DiagnosticStatusPage({ params, searchParams }: Pag
 
   return (
     <PageShell progress={25}>
+      <TrackJourneyStep
+        step="companyData"
+        params={{
+          diagnostico_id: diagnosticId,
+          analise_site:
+            outcome.status === "completed"
+              ? "concluida"
+              : outcome.status === "skipped"
+                ? "sem_site"
+                : outcome.invalidWebsite
+                  ? "site_invalido"
+                  : "falhou",
+        }}
+      />
       {analysisError ? (
         <p role="alert" className="text-destructive mb-4 text-center text-sm">
           Não conseguimos salvar sua última ação. Tente novamente.
