@@ -11,6 +11,7 @@ const markIntegrationFailed = vi.fn();
 const markIntegrationPermanentlyFailed = vi.fn();
 const getCommercialPlanResult = vi.fn();
 const sendConversion = vi.fn();
+const listAnswers = vi.fn();
 
 // vi.hoisted: a factory de vi.mock roda antes de qualquer "let" normal do
 // arquivo — precisamos de um objeto mutável que já exista nesse momento
@@ -32,6 +33,7 @@ vi.mock("@/lib/database", () => ({
   diagnostics: { getDiagnosticById, completeDiagnostic },
   companies: { getCompanyById },
   leads: { getLeadById },
+  diagnosticAnswers: { listAnswers },
   rdIntegrations: {
     findIntegrationByEvent,
     createIntegrationIfAbsent,
@@ -93,6 +95,7 @@ function completedPlanResult(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  listAnswers.mockResolvedValue([]);
   envState.rdApiKey = "chave-de-teste";
   getDiagnosticById.mockResolvedValue(diagnostic());
   completeDiagnostic.mockResolvedValue(diagnostic({ status: "completed" }));
@@ -183,10 +186,31 @@ describe("sendRdStationConversion — sucesso e payload", () => {
     expect(payloadArg.cf_link_plano_comercial).toBe("https://quiz.jobcontent.com.br/diagnostico/diagnostic-1");
   });
 
-  it("a conversão de captura também leva o link do diagnóstico", async () => {
+  it("a conversão de captura NÃO leva o link nem as respostas (só a conversão final leva)", async () => {
     await sendRdStationCaptureConversion("diagnostic-1");
     const [payloadArg] = sendConversion.mock.calls[0];
-    expect(payloadArg.cf_link_plano_comercial).toBe("https://quiz.jobcontent.com.br/diagnostico/diagnostic-1");
+    expect(payloadArg.cf_link_plano_comercial).toBeUndefined();
+    expect(payloadArg.cf_respostas_quiz).toBeUndefined();
+    expect(listAnswers).not.toHaveBeenCalled();
+  });
+
+  it("a conversão final leva todas as respostas do quiz: campos das universais + texto completo", async () => {
+    listAnswers.mockResolvedValue([
+      { question_key: "U1", answer_value: 5000 },
+      { question_key: "U3", answer_value: 4 },
+      { question_key: "U11", answer_value: "usa_desorganizado" },
+      { question_key: "D2_Q1", answer_value: "existe_nao_seguido" },
+    ]);
+
+    await sendRdStationConversion("diagnostic-1");
+
+    const [payloadArg] = sendConversion.mock.calls[0];
+    expect(payloadArg.cf_ticket_medio).toBe("R$ 5.000");
+    expect(payloadArg.cf_vendedores_ativos).toBe("4");
+    expect(payloadArg.cf_uso_crm).toBe("Usamos, mas está desorganizado ou pouco usado pela equipe");
+    expect(payloadArg.cf_respostas_quiz).toContain("Desafio escolhido: Geramos leads, mas poucos avançam");
+    expect(payloadArg.cf_respostas_quiz).toContain("Existe, mas não é seguido");
+    expect(payloadArg.cf_meta_faturamento_mensal).toBeUndefined();
   });
 });
 

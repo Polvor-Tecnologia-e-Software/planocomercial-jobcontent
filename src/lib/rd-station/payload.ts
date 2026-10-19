@@ -1,10 +1,15 @@
 import "server-only";
 
 import type { RdConversionIdentifier } from "@/lib/rd-station/config";
-import { RD_CUSTOM_FIELDS, RD_NATIVE_FIELDS } from "@/lib/rd-station/field-map";
+import { RD_CUSTOM_FIELDS, RD_NATIVE_FIELDS, RD_QUIZ_FIELDS } from "@/lib/rd-station/field-map";
+import type { RdQuizAnswers } from "@/lib/rd-station/quiz-answers";
 
 /** Nenhum campo de texto enviado ao RD Station passa disso — proteção simples contra payload injection/campos gigantes (seção 16). */
 const MAX_FIELD_LENGTH = 300;
+/** Exceção: o texto com todas as respostas do quiz (cf_respostas_quiz) — ~14 perguntas com o enunciado completo. */
+const MAX_SUMMARY_LENGTH = 5000;
+/** Resposta de uma pergunta do quiz — o mesmo teto do campo de texto da jornada. */
+const MAX_QUIZ_ANSWER_LENGTH = 2000;
 
 export type RdStationLeadInput = {
   email: string;
@@ -43,6 +48,8 @@ export type BuildRdStationConversionPayloadInput = {
   diagnostic: RdStationDiagnosticInput;
   /** Link público da tela do diagnóstico desta pessoa (vai em cf_link_plano_comercial). */
   planLink: string | null;
+  /** Respostas do quiz — só na conversão final (plano realizado); null na de captura. */
+  quizAnswers: RdQuizAnswers | null;
 };
 
 /**
@@ -56,11 +63,27 @@ export type RdStationConversionPayload = {
   email: string;
 } & Partial<Record<string, string | number>>;
 
-function clean(value: string | null | undefined): string | undefined {
+function clean(value: string | null | undefined, maxLength = MAX_FIELD_LENGTH): string | undefined {
   if (value === null || value === undefined) return undefined;
   const trimmed = value.trim();
   if (trimmed === "") return undefined;
-  return trimmed.slice(0, MAX_FIELD_LENGTH);
+  return trimmed.slice(0, maxLength);
+}
+
+const ALLOWED_QUIZ_FIELDS = new Set(Object.values(RD_QUIZ_FIELDS));
+
+/**
+ * Telefone no padrão exigido pela RD (+55DDDNÚMERO, ex.: +5511999998888)
+ * — o lead guarda como foi digitado, com máscara: "(44) 99709-3737".
+ * 10/11 dígitos = DDD + número brasileiro; 12/13 começando com 55 = já tem
+ * o código do país. Qualquer outro formato vai como veio (nunca descarta).
+ */
+export function toRdPhone(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const digits = value.replace(/\D/g, "");
+  if (digits.length === 10 || digits.length === 11) return `+55${digits}`;
+  if ((digits.length === 12 || digits.length === 13) && digits.startsWith("55")) return `+${digits}`;
+  return value;
 }
 
 /**
@@ -74,7 +97,7 @@ function clean(value: string | null | undefined): string | undefined {
 export function buildRdStationConversionPayload(
   input: BuildRdStationConversionPayloadInput,
 ): RdStationConversionPayload {
-  const { conversionIdentifier, lead, company, diagnostic, planLink } = input;
+  const { conversionIdentifier, lead, company, diagnostic, planLink, quizAnswers } = input;
 
   const payload: RdStationConversionPayload = {
     conversion_identifier: conversionIdentifier,
@@ -84,10 +107,10 @@ export function buildRdStationConversionPayload(
   const name = clean(lead.name);
   if (name) payload[RD_NATIVE_FIELDS.name] = name;
 
-  const personalPhone = clean(lead.personalPhone);
+  const personalPhone = toRdPhone(clean(lead.personalPhone));
   if (personalPhone) payload[RD_NATIVE_FIELDS.personalPhone] = personalPhone;
 
-  const mobilePhone = clean(lead.mobilePhone);
+  const mobilePhone = toRdPhone(clean(lead.mobilePhone));
   if (mobilePhone) payload[RD_NATIVE_FIELDS.mobilePhone] = mobilePhone;
 
   const jobTitle = clean(lead.jobTitle);
@@ -145,6 +168,17 @@ export function buildRdStationConversionPayload(
 
   const link = clean(planLink);
   if (link) payload[RD_CUSTOM_FIELDS.planLink] = link;
+
+  if (quizAnswers) {
+    // Só os campos do mapa centralizado — nunca uma chave arbitrária.
+    for (const [field, value] of Object.entries(quizAnswers.fields)) {
+      // Respostas abertas (texto livre) podem passar de 300 caracteres — mesmo limite da tela (2.000).
+      const answer = clean(value, MAX_QUIZ_ANSWER_LENGTH);
+      if (answer && ALLOWED_QUIZ_FIELDS.has(field)) payload[field] = answer;
+    }
+    const summary = clean(quizAnswers.summary, MAX_SUMMARY_LENGTH);
+    if (summary) payload[RD_CUSTOM_FIELDS.quizAnswersSummary] = summary;
+  }
 
   return payload;
 }

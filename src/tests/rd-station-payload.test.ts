@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import { RD_CONVERSION_IDENTIFIERS } from "@/lib/rd-station/config";
 import { RD_CUSTOM_FIELDS, RD_NATIVE_FIELDS } from "@/lib/rd-station/field-map";
-import { buildRdStationConversionPayload, type BuildRdStationConversionPayloadInput } from "@/lib/rd-station/payload";
+import {
+  buildRdStationConversionPayload,
+  toRdPhone,
+  type BuildRdStationConversionPayloadInput,
+} from "@/lib/rd-station/payload";
 
 function baseInput(overrides: Partial<BuildRdStationConversionPayloadInput> = {}): BuildRdStationConversionPayloadInput {
   return {
@@ -33,6 +37,7 @@ function baseInput(overrides: Partial<BuildRdStationConversionPayloadInput> = {}
       confidenceLevel: null,
     },
     planLink: null,
+    quizAnswers: null,
     ...overrides,
   };
 }
@@ -165,9 +170,17 @@ describe("buildRdStationConversionPayload — dados do contato (quando disponív
     );
 
     expect(payload[RD_NATIVE_FIELDS.name]).toBe("Maria Souza");
-    expect(payload[RD_NATIVE_FIELDS.personalPhone]).toBe("+55 11 90000-0000");
-    expect(payload[RD_NATIVE_FIELDS.mobilePhone]).toBe("+55 11 98888-8888");
+    expect(payload[RD_NATIVE_FIELDS.personalPhone]).toBe("+5511900000000");
+    expect(payload[RD_NATIVE_FIELDS.mobilePhone]).toBe("+5511988888888");
     expect(payload[RD_NATIVE_FIELDS.jobTitle]).toBe("Diretora Comercial");
+  });
+
+  it("envia o telefone no padrão da RD (+55DDDNÚMERO), mesmo digitado com máscara", () => {
+    expect(toRdPhone("(44) 99709-3737")).toBe("+5544997093737");
+    expect(toRdPhone("(11) 3265-4321")).toBe("+551132654321");
+    expect(toRdPhone("5544997093737")).toBe("+5544997093737");
+    expect(toRdPhone("123")).toBe("123");
+    expect(toRdPhone(undefined)).toBeUndefined();
   });
 
   it("funciona normalmente sem nenhum desses campos (estado real hoje: nunca capturados)", () => {

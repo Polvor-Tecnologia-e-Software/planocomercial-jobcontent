@@ -45,4 +45,51 @@ export const RD_CUSTOM_FIELDS = {
   segment: "cf_segmento_empresa",
   /** Link público da tela do diagnóstico/plano da pessoa (ex.: https://quiz.jobcontent.com.br/diagnostico/{id}). */
   planLink: "cf_link_plano_comercial",
+  /** Todas as respostas do quiz em texto ("Pergunta: resposta", uma por linha) — campo do tipo área de texto. */
+  quizAnswersSummary: "cf_respostas_quiz",
 } as const;
+
+/**
+ * Um campo por pergunta do quiz (pedido explícito: todas as perguntas de
+ * todos os objetivos), para segmentar no RD. Universais (as mesmas para
+ * qualquer desafio) e as específicas de cada desafio (prefixo cf_dN_,
+ * preenchidas só para quem escolheu aquele desafio). Ver
+ * challenge-config.ts para os enunciados.
+ */
+export const RD_QUIZ_FIELDS: Record<string, string> = {
+  // Universais
+  U1: "cf_ticket_medio",
+  U2: "cf_ciclo_vendas_dias",
+  U3: "cf_vendedores_ativos",
+  U4: "cf_meta_faturamento_mensal",
+  U5: "cf_vendas_por_mes",
+  U10: "cf_faturamento_mensal_atual",
+  U6: "cf_leads_por_mes",
+  U7: "cf_oportunidades_por_mes",
+  U8: "cf_reunioes_por_mes",
+  U9: "cf_propostas_por_mes",
+  U11: "cf_uso_crm",
+  // D1 — Precisamos gerar mais oportunidades
+  D1_Q1: "cf_d1_origem_leads",
+  D1_Q3: "cf_d1_registro_origem_leads",
+  // D2 — Geramos leads, mas poucos avançam
+  D2_Q1: "cf_d2_criterio_qualificacao",
+  D2_Q2: "cf_d2_taxa_lead_oportunidade",
+  D2_Q3: "cf_d2_dificuldade_criterio",
+  // D3 — Temos propostas, mas fechamos pouco
+  D3_Q1: "cf_d3_motivo_perda",
+  D3_Q2: "cf_d3_dias_proposta_parada",
+  D3_Q3: "cf_d3_registro_motivo_perda",
+  // D4 — O processo depende demais dos vendedores
+  D4_Q1: "cf_d4_tem_playbook",
+  D4_Q2: "cf_d4_impacto_saida_vendedor",
+  D4_Q3: "cf_d4_dificuldade_padronizar",
+  // D5 — Não sabemos onde estamos perdendo vendas
+  D5_Q1: "cf_d5_relatorio_funil",
+  D5_Q2: "cf_d5_visibilidade_etapas",
+  D5_Q3: "cf_d5_gestao_funil",
+  // D6 — Queremos crescer sem aumentar a equipe
+  D6_Q1: "cf_d6_trabalho_manual",
+  D6_Q2: "cf_d6_ferramenta_automacao",
+  D6_Q3: "cf_d6_tarefa_manual",
+};

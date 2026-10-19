@@ -17,10 +17,11 @@ consentimento, idempotência, retry). São duas conversões:
 | Identificador | Quando dispara | Dados principais |
 |---|---|---|
 | `plano-comercial-90-dias-captura` | Envio do formulário inicial | nome, e-mail, empresa, site, origem |
-| `plano-comercial-90-dias-realizado` | Plano de 90 dias pronto | + telefone, desafio, gargalo, confiança |
+| `plano-comercial-90-dias-realizado` | Plano de 90 dias pronto | + telefone, desafio, gargalo, confiança, **link do diagnóstico e todas as respostas do quiz** |
 
-As duas levam o link do diagnóstico da pessoa em `cf_link_plano_comercial`
-(`APP_URL` + `/diagnostico/{id}`, ex.: `https://quiz.jobcontent.com.br/diagnostico/...`).
+O link do diagnóstico (`cf_link_plano_comercial`, `APP_URL` +
+`/diagnostico/{id}`) e as respostas do quiz vão **só** na conversão
+`plano-comercial-90-dias-realizado` — nunca na de captura.
 
 Nenhuma das duas bloqueia a jornada se o RD Station estiver
 indisponível. Até a versão 03, a conversão de plano pronto se chamava
@@ -110,6 +111,52 @@ mudar (nunca só por ajuste cosmético de redação).
       | `cf_nivel_confianca`         | `low` / `medium` / `high`                          |
       | `cf_segmento_empresa`        | Segmento da empresa, se confirmado na jornada      |
       | `cf_link_plano_comercial`    | Link do diagnóstico da pessoa (`APP_URL` + `/diagnostico/{id}`) |
+
+      **Respostas do quiz** (só na conversão final). Um campo para cada
+      uma das 28 perguntas, mais um campo com todas as respostas em texto.
+      Universais (todo mundo responde):
+
+      | Identificador (`cf_*`)          | Tipo          | Pergunta |
+      |---------------------------------|---------------|----------|
+      | `cf_ticket_medio`               | Texto         | Ticket médio de uma venda (ex.: "R$ 5.000") |
+      | `cf_ciclo_vendas_dias`          | Texto         | Ciclo médio de vendas, em dias |
+      | `cf_vendedores_ativos`          | Texto         | Pessoas vendendo ativamente (SDR + closers) |
+      | `cf_meta_faturamento_mensal`    | Texto         | Meta de faturamento mensal |
+      | `cf_vendas_por_mes`             | Texto         | Vendas (novos clientes) por mês hoje |
+      | `cf_faturamento_mensal_atual`   | Texto         | Faturamento mensal atual |
+      | `cf_leads_por_mes`              | Texto         | Leads novos por mês |
+      | `cf_oportunidades_por_mes`      | Texto         | Oportunidades por mês |
+      | `cf_reunioes_por_mes`           | Texto         | Reuniões/calls por mês |
+      | `cf_propostas_por_mes`          | Texto         | Propostas/orçamentos por mês |
+      | `cf_uso_crm`                    | Texto         | Uso de CRM (texto da opção escolhida) |
+      | `cf_respostas_quiz`             | Área de texto | Todas as respostas, "pergunta — resposta", uma por linha (até 5.000 caracteres) |
+
+      Específicas de cada objetivo (preenchidas só para quem escolheu
+      aquele objetivo; as opções chegam com o texto que a pessoa viu):
+
+      | Identificador (`cf_*`)            | Tipo          | Objetivo | Pergunta |
+      |-----------------------------------|---------------|----------|----------|
+      | `cf_d1_origem_leads`              | Texto         | D1 | De onde vêm a maioria dos leads |
+      | `cf_d1_registro_origem_leads`     | Texto         | D1 | Existe registro de onde os leads vêm |
+      | `cf_d2_criterio_qualificacao`     | Texto         | D2 | Critério claro de qualificação (MQL/SQL) |
+      | `cf_d2_taxa_lead_oportunidade`    | Texto         | D2 | Taxa de leads que viram oportunidade |
+      | `cf_d2_dificuldade_criterio`      | Área de texto | D2 | O que atrapalha seguir o critério (resposta aberta) |
+      | `cf_d3_motivo_perda`              | Texto         | D3 | Principal motivo de perda |
+      | `cf_d3_dias_proposta_parada`      | Texto         | D3 | Dias que uma proposta fica parada |
+      | `cf_d3_registro_motivo_perda`     | Texto         | D3 | Registro do motivo de perda no CRM |
+      | `cf_d4_tem_playbook`              | Texto         | D4 | Existe playbook comercial |
+      | `cf_d4_impacto_saida_vendedor`    | Texto         | D4 | Impacto se o principal vendedor sair |
+      | `cf_d4_dificuldade_padronizar`    | Área de texto | D4 | O que dificulta padronizar (resposta aberta) |
+      | `cf_d5_relatorio_funil`           | Texto         | D5 | Relatório do funil atualizado |
+      | `cf_d5_visibilidade_etapas`       | Texto         | D5 | Quem sabe quantas oportunidades há em cada etapa |
+      | `cf_d5_gestao_funil`              | Texto         | D5 | Onde o funil é gerenciado |
+      | `cf_d6_trabalho_manual`           | Texto         | D6 | Quanto do trabalho é manual |
+      | `cf_d6_ferramenta_automacao`      | Texto         | D6 | Ferramenta de automação em uso |
+      | `cf_d6_tarefa_manual`             | Área de texto | D6 | Tarefa manual que mais consome tempo (resposta aberta) |
+
+      Algumas perguntas só aparecem para certas respostas (ex.: D2 "o que
+      atrapalha" só para quem disse que o critério existe mas não é
+      seguido) — nesses casos o campo fica vazio, nunca com valor inventado.
 
       Removidos por decisão do time (não são mais enviados nem precisam
       existir no RD Station): `cf_risco_secundario`, `cf_qualidade_dados`,

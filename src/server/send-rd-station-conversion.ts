@@ -10,7 +10,8 @@ import {
   type RdStationConversionPayload,
   type RdStationLeadInput,
 } from "@/lib/rd-station/payload";
-import { companies, diagnostics, leads, rdIntegrations } from "@/lib/database";
+import { buildRdQuizAnswers } from "@/lib/rd-station/quiz-answers";
+import { companies, diagnosticAnswers, diagnostics, leads, rdIntegrations } from "@/lib/database";
 import { getCommercialPlanResult } from "@/server/get-commercial-plan-result";
 import type { LeadRow } from "@/types/tables";
 
@@ -163,7 +164,9 @@ export async function sendRdStationCaptureConversion(diagnosticId: string): Prom
         lead: leadInputOf({ ...lead, email }),
         company: { companyName: company.company_name, website: company.website, segment: company.segment },
         diagnostic: { diagnosticId, challengeLabel: null, primaryBottleneckLabel: null, confidenceLevel: null },
-        planLink: buildDiagnosticLink(env.APP_URL, diagnosticId),
+        // Link e respostas só na conversão final (pedido explícito).
+        planLink: null,
+        quizAnswers: null,
       }),
   });
 }
@@ -172,7 +175,8 @@ export async function sendRdStationCaptureConversion(diagnosticId: string): Prom
  * Conversão "plano-comercial-90-dias-realizado": enviada quando o plano
  * comercial de 90 dias já foi gerado (mesmo sinal usado pela tela de
  * resultado — getCommercialPlanResult, nunca chama IA aqui), já com
- * telefone, desafio, gargalo e link do PDF.
+ * telefone, desafio, gargalo, link da tela do diagnóstico e todas as
+ * respostas do quiz (link e respostas vão SÓ nesta conversão).
  *
  * Nunca lança e nunca bloqueia a jornada — quem chama (ver
  * src/server/actions/generate-commercial-plan-action.ts) nunca deixa isso
@@ -224,8 +228,12 @@ export async function sendRdStationCompletedConversion(
     diagnosticId,
     leadId: lead.id,
     eventName: RD_CONVERSION_IDENTIFIERS.completed,
-    buildPayload: async () =>
-      buildRdStationConversionPayload({
+    buildPayload: async () => {
+      const challenge = diagnostic.selected_challenge;
+      const quizAnswers = challenge
+        ? buildRdQuizAnswers(challenge, await diagnosticAnswers.listAnswers(diagnosticId))
+        : null;
+      return buildRdStationConversionPayload({
         conversionIdentifier: RD_CONVERSION_IDENTIFIERS.completed,
         lead: leadInputOf({ ...lead, email }),
         company: { companyName: company.company_name, website: company.website, segment: company.segment },
@@ -236,6 +244,8 @@ export async function sendRdStationCompletedConversion(
           confidenceLevel: diagnostic.confidence_level,
         },
         planLink: buildDiagnosticLink(env.APP_URL, diagnosticId),
-      }),
+        quizAnswers,
+      });
+    },
   });
 }
